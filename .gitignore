@@ -18,3 +18,5 @@ addon_charts/**/Chart.lock
 
 # Sisyphus AI tooling
 .sisyphus/
+.omc
+CLAUDE.md
