@@ -41,8 +41,8 @@ opentelemetry-operator:
       repository: ghcr.io/open-telemetry/opentelemetry-operator/opentelemetry-operator
       tag: ""
     collectorImage:
-      repository: "otel/opentelemetry-collector-k8s"
-      tag: 0.116.1
+      repository: "ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-k8s"
+      tag: 0.131.1
     opampBridgeImage:
       repository: ""
       tag: ""
