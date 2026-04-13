@@ -11,5 +11,14 @@ tests:
           of: pkg.crossplane.io/v1
       - equal:
           path: metadata.name
-          value: provider-redis-azure
+          value: upbound-provider-family-azure
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: upbound-provider-azure-cache
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: upbound-provider-azure-network
+        documentIndex: 2
       - matchSnapshot: {}
