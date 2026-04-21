@@ -1,0 +1,21 @@
+apiVersion: v2
+name: strimzi-operator
+description: Strimzi Kafka Operator addon for the control plane cluster
+
+type: application
+
+version: 0.1.0
+
+appVersion: "0.51.0"
+
+keywords:
+  - kafka
+  - strimzi
+  - messaging
+  - streaming
+  - operator
+
+dependencies:
+  - name: strimzi-kafka-operator
+    version: 0.51.0
+    repository: https://strimzi.io/charts/

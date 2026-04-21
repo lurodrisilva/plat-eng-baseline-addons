@@ -104,3 +104,8 @@ azure_service_operator:
   addon_name: azure-service-operator
   enabled: false
   namespace: resources-system
+
+strimzi_operator:
+  addon_name: strimzi-operator
+  enabled: true
+  namespace: messaging-system

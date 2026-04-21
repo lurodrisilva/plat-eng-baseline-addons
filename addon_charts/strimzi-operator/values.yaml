@@ -1,0 +1,47 @@
+# Values for the Strimzi Kafka Operator addon chart.
+# Overrides are namespaced under the upstream dependency name (strimzi-kafka-operator).
+strimzi-kafka-operator:
+  # Number of replicas of the cluster operator
+  replicas: 1
+  revisionHistoryLimit: 10
+
+  # Watch all namespaces for Kafka custom resources
+  watchAnyNamespace: true
+  watchNamespaces: []
+
+  # Default image coordinates (match the chart's appVersion)
+  defaultImageRegistry: quay.io
+  defaultImageRepository: strimzi
+  defaultImageTag: 0.51.0
+
+  image:
+    imagePullPolicy: IfNotPresent
+
+  # Enable leader election to allow safe multi-replica deployments
+  leaderElection:
+    enable: true
+
+  # RBAC + service account are created by the chart
+  rbac:
+    create: true
+  serviceAccountCreate: true
+
+  # Harden the operator pod
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 384Mi
