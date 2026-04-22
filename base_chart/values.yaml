@@ -2,7 +2,7 @@ global:
   control_plane: 
     namespace: control-plane-system
     project: addons-project
-    repo: https://github.com/lurodrisilva/gitops
+    repo: https://github.com/lurodrisilva/plat-eng-baseline-addons
     deployment: 
       limit: 5
       backoff:
