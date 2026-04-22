@@ -108,8 +108,9 @@ Check `base_chart/values.yaml` for current status. As of now:
 - reloader
 - cloudnative-pg
 - azure-service-operator
+- strimzi-operator
 
-All others are disabled by default.
+All others (including `k6-operator`) are disabled by default.
 
 ## Best Practices
 

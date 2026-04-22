@@ -105,7 +105,7 @@ spec:
 
 **Optional variations** (apply when needed):
 - Add `ignoreDifferences` for CRD-heavy addons (see `09-cert-manager.yaml`)
-- Add `ServerSideApply=true` to syncOptions for large CRDs (see `17-cloud-native-pg.yaml`, `18-azure-service-operator.yaml`)
+- Add `ServerSideApply=true` to syncOptions for large CRDs (see `17-cloud-native-pg.yaml`, `18-azure-service-operator.yaml`, `19-strimzi-operator.yaml`, `20-k6-operator.yaml`)
 
 ### 5. Add Configuration to base_chart/values.yaml
 
@@ -156,6 +156,7 @@ Organize addons with sync waves for proper ordering:
 - 5-9: Core services (node-problem-detector, otel, datadog, cert-manager)
 - 10-14: Platform services (reloader, providers-config, backup, cluster-secret)
 - 15-18: Application services (kubecost, observability, cloudnative-pg, azure-service-operator)
+- 19+: Workload operators (strimzi-operator, k6-operator)
 
 ## Best Practices
 
