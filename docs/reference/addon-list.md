@@ -58,6 +58,19 @@ Features:
 - Workload identity and service principal authentication
 - Supports Azure databases, networking, storage, and more
 
+### strimzi-operator
+
+**Purpose**: Strimzi Kafka operator — deploys and manages Kafka clusters, topics, and users on Kubernetes
+**Namespace**: messaging-system
+**Version**: 0.51.0
+**Upstream**: https://strimzi.io/charts/
+
+Features:
+- Declarative Kafka cluster management via `Kafka` / `KafkaTopic` / `KafkaUser` CRDs
+- Watches all namespaces (`watchAnyNamespace: true`)
+- Leader election for safe multi-replica operation
+- `ServerSideApply=true` for large CRDs
+
 ## Available Addons (Disabled)
 
 ### resources
@@ -183,6 +196,20 @@ Full observability platform including:
 
 Backup and disaster recovery solutions.
 
+### k6-operator
+
+**Purpose**: Grafana k6 Kubernetes operator — runs distributed load tests against cluster workloads
+**Namespace**: testing-system
+**Version**: chart 4.3.2 / appVersion 1.3.2
+**Upstream**: https://grafana.github.io/helm-charts
+**Status**: Disabled
+
+Features:
+- Declarative load tests via `TestRun` CRDs
+- Optional `PrivateLoadZone` CRD for Grafana Cloud integration
+- Cluster-wide RBAC — reconciles `TestRun` resources in any namespace
+- `ServerSideApply=true` required for the CRD bundle
+
 ### s3-csi-driver
 
 **Purpose**: AWS S3 CSI driver for mounting S3 buckets as volumes
@@ -210,6 +237,8 @@ Estimated resource usage when enabled:
 | reloader | 10m | 32Mi | - |
 | cloudnative-pg | 100m | 100Mi | - |
 | azure-service-operator | 200m | 256Mi | - |
+| strimzi-operator | 200m | 384Mi | - |
+| k6-operator | 100m | 128Mi | - |
 | metrics-server | 100m | 200Mi | - |
 | kube-state-metrics | 10m | 32Mi | - |
 | observability | 2000m | 4Gi | 50Gi |
@@ -235,9 +264,12 @@ Addons are deployed in order based on sync wave:
 | 11 | providers-config |
 | 13 | backup |
 | 14 | cluster-secret |
-| 15 | kubecost, observability |
+| 15 | kubecost |
+| 16 | observability |
 | 17 | cloudnative-pg |
 | 18 | azure-service-operator |
+| 19 | strimzi-operator |
+| 20 | k6-operator |
 
 ## Adding Custom Addons
 

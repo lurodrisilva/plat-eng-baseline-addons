@@ -44,6 +44,7 @@ This repository implements the **App-of-Apps pattern** with ArgoCD:
 │  • reloader Application                                 │
 │  • cloudnative-pg Application                           │
 │  • azure-service-operator Application                   │
+│  • strimzi-operator Application                         │
 └─────────────────────────────────────────────────────────┘
                         ↓  (deploys)
 ┌─────────────────────────────────────────────────────────┐
@@ -113,7 +114,9 @@ Gitops App (parent)
   ├── cert-manager App (child)
   ├── reloader App (child)
   ├── cloudnative-pg App (child)
-  └── azure-service-operator App (child)
+  ├── azure-service-operator App (child)
+  ├── strimzi-operator App (child)
+  └── k6-operator App (child, disabled by default)
 ```
 
 Benefits:
@@ -154,6 +157,8 @@ Lower numbers deploy first. Example order:
 - Wave 10: reloader
 - Wave 17: cloudnative-pg
 - Wave 18: azure-service-operator
+- Wave 19: strimzi-operator
+- Wave 20: k6-operator
 
 ### Prune Behavior
 

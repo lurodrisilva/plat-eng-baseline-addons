@@ -62,6 +62,7 @@ kubectl get applications -n control-plane-system
 # reloader
 # cloudnative-pg
 # azure-service-operator
+# strimzi-operator
 ```
 
 ### 5. Enable Additional Addons

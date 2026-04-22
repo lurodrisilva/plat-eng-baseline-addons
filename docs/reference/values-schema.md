@@ -254,6 +254,28 @@ azure_service_operator:
 
 Manages Azure resources directly from Kubernetes via CRDs. Supports workload identity authentication, service principals, and managed identities.
 
+### Strimzi Kafka Operator
+
+```yaml
+strimzi_operator:
+  addon_name: strimzi-operator
+  enabled: true
+  namespace: messaging-system
+```
+
+Strimzi operator for managing Kafka clusters, topics, and users on Kubernetes. Watches all namespaces. Uses `ServerSideApply=true` for its CRD bundle.
+
+### k6 Operator
+
+```yaml
+k6_operator:
+  addon_name: k6-operator
+  enabled: false
+  namespace: testing-system
+```
+
+Grafana k6 operator for distributed load testing via `TestRun` CRDs. Shipped disabled — flip `enabled: true` to deploy. Uses `ServerSideApply=true` for its CRD bundle.
+
 ## Example Configuration
 
 ### Minimal (Default)
@@ -290,6 +312,11 @@ azure_service_operator:
   addon_name: azure-service-operator
   enabled: true
   namespace: resources-system
+
+strimzi_operator:
+  addon_name: strimzi-operator
+  enabled: true
+  namespace: messaging-system
 ```
 
 ### Full Observability
