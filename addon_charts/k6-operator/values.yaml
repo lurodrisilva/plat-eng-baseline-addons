@@ -1,0 +1,59 @@
+# Values for the Grafana k6 Operator addon chart.
+# Overrides are namespaced under the upstream dependency name (k6-operator).
+k6-operator:
+  # Install TestRun/PrivateLoadZone CRDs as part of the release.
+  installCRDs: true
+
+  # Let ArgoCD manage the namespace via syncOptions.CreateNamespace=true.
+  namespace:
+    create: false
+
+  # Cluster-wide RBAC so the operator can reconcile TestRuns in any namespace.
+  rbac:
+    namespaced: false
+
+  # ServiceMonitor is wired up once the observability addon is enabled.
+  metrics:
+    serviceMonitor:
+      enabled: false
+
+  service:
+    enabled: true
+    portName: https
+
+  manager:
+    replicas: 1
+
+    logging:
+      # Production JSON logs.
+      development: false
+
+    serviceAccount:
+      create: true
+      name: k6-operator-controller
+
+    image:
+      registry: ghcr.io
+      repository: grafana/k6-operator
+      tag: controller-v1.3.2
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL

@@ -198,6 +198,8 @@ Lowercase, present participle style:
 | `resources-system` | Crossplane resources, providers, cloudnative-pg, ASO |
 | `karpenter` | Karpenter autoscaler |
 | `backup-system` | Backup solutions |
+| `messaging-system` | Strimzi Kafka operator |
+| `testing-system` | k6 load-testing operator |
 | `devops-system` | ArgoCD server (managed by infra repo) |
 
 ## Common Pitfalls
