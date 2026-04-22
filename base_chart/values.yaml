@@ -20,6 +20,7 @@ providers:
   enabled: true
   namespace: resources-system
 
+# This provider is configured thru terraform, so we keep it disabled here to avoid conflicts.
 providers_config:
   addon_name: providers-config
   enabled: false
@@ -112,5 +113,5 @@ strimzi_operator:
 
 k6_operator:
   addon_name: k6-operator
-  enabled: false
+  enabled: true
   namespace: testing-system
