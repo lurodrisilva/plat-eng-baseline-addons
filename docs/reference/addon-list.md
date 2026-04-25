@@ -71,6 +71,36 @@ Features:
 - Leader election for safe multi-replica operation
 - `ServerSideApply=true` for large CRDs
 
+### k6-operator
+
+**Purpose**: Grafana k6 Kubernetes operator — runs distributed load tests against cluster workloads
+**Namespace**: testing-system
+**Version**: chart 4.3.2 / appVersion 1.3.2
+**Upstream**: https://grafana.github.io/helm-charts
+
+Features:
+- Declarative load tests via `TestRun` CRDs
+- Optional `PrivateLoadZone` CRD for Grafana Cloud integration
+- Cluster-wide RBAC — reconciles `TestRun` resources in any namespace
+- `ServerSideApply=true` required for the CRD bundle
+
+### wiremock
+
+**Purpose**: Shared HTTP API mock server for test/preview tiers — every consumer app points at this single instance instead of real third-party HTTP dependencies
+**Namespace**: testing-system
+**Version**: chart 0.1.0 / appVersion 3.9.1
+**Upstream**: https://hub.docker.com/r/wiremock/wiremock (custom chart, no upstream Helm chart)
+
+Features:
+- Single multi-tenant Deployment, `strategy.type: Recreate` (in-memory mappings are not replicated)
+- ClusterIP Service on `wiremock.testing-system.svc.cluster.local:8080`
+- NetworkPolicy default-deny — only namespaces labelled `wiremock.io/consumer=true` may reach the Admin API
+- Hardened pod: non-root, `readOnlyRootFilesystem`, drops all capabilities, no PVC
+- Bounded memory: `--no-request-journal`, `--max-request-journal-entries=1000`
+- Stubs are owned by consuming applications and registered at install/upgrade via `POST /__admin/mappings`; nothing is baked into this chart
+
+> **Production warning**: WireMock has no built-in auth on `/__admin/*`. The NetworkPolicy is the only enforcement boundary. Do not enable on a production cluster.
+
 ## Available Addons (Disabled)
 
 ### resources
@@ -196,20 +226,6 @@ Full observability platform including:
 
 Backup and disaster recovery solutions.
 
-### k6-operator
-
-**Purpose**: Grafana k6 Kubernetes operator — runs distributed load tests against cluster workloads
-**Namespace**: testing-system
-**Version**: chart 4.3.2 / appVersion 1.3.2
-**Upstream**: https://grafana.github.io/helm-charts
-**Status**: Disabled
-
-Features:
-- Declarative load tests via `TestRun` CRDs
-- Optional `PrivateLoadZone` CRD for Grafana Cloud integration
-- Cluster-wide RBAC — reconciles `TestRun` resources in any namespace
-- `ServerSideApply=true` required for the CRD bundle
-
 ### s3-csi-driver
 
 **Purpose**: AWS S3 CSI driver for mounting S3 buckets as volumes
@@ -239,6 +255,7 @@ Estimated resource usage when enabled:
 | azure-service-operator | 200m | 256Mi | - |
 | strimzi-operator | 200m | 384Mi | - |
 | k6-operator | 100m | 128Mi | - |
+| wiremock | 100m | 256Mi | - |
 | metrics-server | 100m | 200Mi | - |
 | kube-state-metrics | 10m | 32Mi | - |
 | observability | 2000m | 4Gi | 50Gi |
@@ -270,6 +287,7 @@ Addons are deployed in order based on sync wave:
 | 18 | azure-service-operator |
 | 19 | strimzi-operator |
 | 20 | k6-operator |
+| 21 | wiremock |
 
 ## Adding Custom Addons
 

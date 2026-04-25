@@ -45,6 +45,8 @@ This repository implements the **App-of-Apps pattern** with ArgoCD:
 │  • cloudnative-pg Application                           │
 │  • azure-service-operator Application                   │
 │  • strimzi-operator Application                         │
+│  • k6-operator Application                              │
+│  • wiremock Application                                 │
 └─────────────────────────────────────────────────────────┘
                         ↓  (deploys)
 ┌─────────────────────────────────────────────────────────┐
@@ -116,7 +118,8 @@ Gitops App (parent)
   ├── cloudnative-pg App (child)
   ├── azure-service-operator App (child)
   ├── strimzi-operator App (child)
-  └── k6-operator App (child, disabled by default)
+  ├── k6-operator App (child)
+  └── wiremock App (child)
 ```
 
 Benefits:
@@ -159,6 +162,7 @@ Lower numbers deploy first. Example order:
 - Wave 18: azure-service-operator
 - Wave 19: strimzi-operator
 - Wave 20: k6-operator
+- Wave 21: wiremock
 
 ### Prune Behavior
 

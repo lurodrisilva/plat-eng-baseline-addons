@@ -116,9 +116,11 @@ k6_operator:
   enabled: true
   namespace: testing-system
 
-# Shared WireMock mock server for test/preview tiers. Default OFF — opt-in only.
-# Production overlays MUST keep this disabled.
+# Shared WireMock mock server for test/preview tiers.
+# WARNING: This addon ships HTTP mock responses with no built-in auth on the
+# Admin API; access is gated by a NetworkPolicy that only admits namespaces
+# labelled `wiremock.io/consumer=true`. Do NOT enable on a production cluster.
 wiremock:
   addon_name: wiremock
-  enabled: false
+  enabled: true
   namespace: testing-system

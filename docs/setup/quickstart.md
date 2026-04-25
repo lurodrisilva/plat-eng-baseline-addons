@@ -63,6 +63,8 @@ kubectl get applications -n control-plane-system
 # cloudnative-pg
 # azure-service-operator
 # strimzi-operator
+# k6-operator
+# wiremock
 ```
 
 ### 5. Enable Additional Addons
