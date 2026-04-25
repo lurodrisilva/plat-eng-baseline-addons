@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: wiremock deployment
+templates:
+  - templates/10-deployment.yaml
+tests:
+  - it: should render a Deployment
+    asserts:
+      - isKind:
+          of: Deployment
+      - isAPIVersion:
+          of: apps/v1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-wiremock
+      - equal:
+          path: metadata.namespace
+          value: testing-system
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: wiremock/wiremock:3.9.1
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "--no-request-journal"
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "--max-request-journal-entries=1000"
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: "--disable-banner"
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /__admin/health

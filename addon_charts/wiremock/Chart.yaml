@@ -1,0 +1,16 @@
+apiVersion: v2
+name: wiremock
+description: Shared WireMock mock server for the testing-system namespace.
+
+type: application
+
+version: 0.1.0
+
+appVersion: "3.9.1"
+
+keywords:
+  - wiremock
+  - mock-server
+  - api-mocking
+  - testing
+  - integration-tests

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: wiremock networkpolicy
+templates:
+  - templates/30-networkpolicy.yaml
+tests:
+  - it: should render no documents when networkPolicy.enabled is false
+    set:
+      networkPolicy.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render a NetworkPolicy that only allows consumer-labelled namespaces
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - isAPIVersion:
+          of: networking.k8s.io/v1
+      - equal:
+          path: metadata.namespace
+          value: testing-system
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+      - equal:
+          path: spec.ingress[0].from[0].namespaceSelector.matchLabels["wiremock.io/consumer"]
+          value: "true"
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 8080

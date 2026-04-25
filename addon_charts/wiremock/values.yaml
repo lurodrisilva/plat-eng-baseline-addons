@@ -1,0 +1,46 @@
+# Values for the shared WireMock addon.
+#
+# Multi-tenant by design: a single Deployment in `testing-system` serves every
+# consumer app. Stubs are owned by the consuming applications and registered
+# at install/upgrade time via the WireMock Admin API; nothing is baked into
+# this chart.
+#
+# Hard-coded safety: recording/playback is disabled and the request journal
+# is bounded. Production overlays MUST NOT enable this addon.
+
+namespace: testing-system
+
+replicaCount: 1   # Multi-tenant in-memory state — never scale beyond 1.
+
+image:
+  repository: wiremock/wiremock
+  tag: "3.9.1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+# Bounded memory and disabled banner; recording is implicitly off when
+# `--no-request-journal` is set and the admin endpoint is firewalled.
+extraArgs:
+  - "--no-request-journal"
+  - "--max-request-journal-entries=1000"
+  - "--disable-banner"
+
+networkPolicy:
+  enabled: true
+  consumerLabel: "wiremock.io/consumer"
+  consumerLabelValue: "true"
+
+serviceAccount:
+  create: true
+  name: wiremock
