@@ -115,3 +115,10 @@ k6_operator:
   addon_name: k6-operator
   enabled: true
   namespace: testing-system
+
+# Shared WireMock mock server for test/preview tiers. Default OFF — opt-in only.
+# Production overlays MUST keep this disabled.
+wiremock:
+  addon_name: wiremock
+  enabled: false
+  namespace: testing-system

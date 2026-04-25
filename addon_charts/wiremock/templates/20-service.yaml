@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "wiremock.name" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "wiremock.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "wiremock.selectorLabels" . | nindent 4 }}
