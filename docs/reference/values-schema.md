@@ -270,11 +270,22 @@ Strimzi operator for managing Kafka clusters, topics, and users on Kubernetes. W
 ```yaml
 k6_operator:
   addon_name: k6-operator
-  enabled: false
+  enabled: true
   namespace: testing-system
 ```
 
-Grafana k6 operator for distributed load testing via `TestRun` CRDs. Shipped disabled — flip `enabled: true` to deploy. Uses `ServerSideApply=true` for its CRD bundle.
+Grafana k6 operator for distributed load testing via `TestRun` CRDs. Uses `ServerSideApply=true` for its CRD bundle.
+
+### WireMock
+
+```yaml
+wiremock:
+  addon_name: wiremock
+  enabled: true
+  namespace: testing-system
+```
+
+Shared WireMock mock server for test/preview tiers. Single multi-tenant Deployment in `testing-system`; consumer apps register stubs via the WireMock Admin API at install/upgrade. NetworkPolicy gates access to namespaces labelled `wiremock.io/consumer=true`. **Do not enable on production clusters** — `/__admin/*` has no built-in auth.
 
 ## Example Configuration
 
@@ -317,6 +328,16 @@ strimzi_operator:
   addon_name: strimzi-operator
   enabled: true
   namespace: messaging-system
+
+k6_operator:
+  addon_name: k6-operator
+  enabled: true
+  namespace: testing-system
+
+wiremock:
+  addon_name: wiremock
+  enabled: true
+  namespace: testing-system
 ```
 
 ### Full Observability

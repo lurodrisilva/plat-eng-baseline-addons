@@ -109,8 +109,10 @@ Check `base_chart/values.yaml` for current status. As of now:
 - cloudnative-pg
 - azure-service-operator
 - strimzi-operator
+- k6-operator
+- wiremock
 
-All others (including `k6-operator`) are disabled by default.
+All others are disabled by default.
 
 ## Best Practices
 
