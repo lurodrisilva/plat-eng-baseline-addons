@@ -122,5 +122,5 @@ k6_operator:
 # labelled `wiremock.io/consumer=true`. Do NOT enable on a production cluster.
 wiremock:
   addon_name: wiremock
-  enabled: true
+  enabled: false
   namespace: testing-system
