@@ -17,7 +17,7 @@ resources:
 
 providers:
   addon_name: providers
-  enabled: true
+  enabled: false
   namespace: resources-system
 
 # This provider is configured thru terraform, so we keep it disabled here to avoid conflicts.
@@ -58,7 +58,7 @@ node_problem_detector:
 
 cert_manager:
   addon_name: cert-manager
-  enabled: true
+  enabled: false
   namespace: control-plane-system
 
 opentelemetry_operator: # Disabled to save resources.
@@ -78,7 +78,7 @@ datadog_operator:
 
 reloader:
   addon_name: reloader
-  enabled: true
+  enabled: false
   namespace: control-plane-system
 
 cluster_secret:
@@ -98,7 +98,7 @@ observability:
 
 cloudnative_pg:
   addon_name: cloudnative-pg
-  enabled: true
+  enabled: false
   namespace: resources-system
 
 azure_service_operator: 
