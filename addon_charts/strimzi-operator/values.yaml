@@ -45,3 +45,7 @@ strimzi-kafka-operator:
     requests:
       cpu: 200m
       memory: 384Mi
+
+  # Pin operator pod to dedicated AKS node pool
+  nodeSelector:
+    agentpool: nodepool4
