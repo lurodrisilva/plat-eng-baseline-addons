@@ -57,3 +57,7 @@ k6-operator:
       capabilities:
         drop:
           - ALL
+
+  # Pin operator pod to dedicated AKS node pool
+  nodeSelector:
+    agentpool: nodepool4
