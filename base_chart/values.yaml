@@ -124,3 +124,19 @@ wiremock:
   addon_name: wiremock
   enabled: false
   namespace: testing-system
+
+# External Secrets Operator — Azure Key Vault via Workload Identity.
+# Azure-side glue (UAMI, federated credential, demo KV) is provisioned by
+# the sibling Terraform repo 03-plat-eng-aks-foundation. After `make apply`
+# there, paste the three outputs into the azure block below:
+#   external_secrets_tenant_id            -> azure.tenant_id
+#   external_secrets_uami_client_id       -> azure.workload_identity_client_id
+#   external_secrets_keyvault_uri         -> azure.keyvault_uri
+external_secrets:
+  addon_name: external-secrets
+  enabled: false
+  namespace: control-plane-system
+  azure:
+    tenant_id: ""
+    workload_identity_client_id: ""
+    keyvault_uri: ""
