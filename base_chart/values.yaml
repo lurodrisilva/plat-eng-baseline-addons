@@ -138,5 +138,5 @@ external_secrets:
   namespace: control-plane-system
   azure:
     tenant_id: "8f77fb2e-7e77-477e-9a03-d078b7aad9c3"
-    workload_identity_client_id: "5d11dc25-2c8d-43e8-84cb-c2d33786cdd4"
-    keyvault_uri: "https://kvoc.vault.azure.net/"
+    workload_identity_client_id: "b43ac0e5-c85b-4a26-b644-d3bf8797a38c"
+    keyvault_uri: "https://eso-dev-c6f0b8.vault.azure.net/"
