@@ -19,7 +19,7 @@ clusterSecretStore:
   serviceAccountNamespace: control-plane-system
 
 demo:
-  enabled: true
+  enabled: false
   namespace: control-plane-system
   externalSecretName: eso-demo
   targetSecretName: eso-demo-secret
