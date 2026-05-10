@@ -1,0 +1,60 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Azure wiring — populated from Terraform outputs in 03-plat-eng-aks-foundation.
+# After `make apply` in that repo, run:
+#
+#   terraform -chdir=./aks-foundation output external_secrets_tenant_id
+#   terraform -chdir=./aks-foundation output external_secrets_uami_client_id
+#   terraform -chdir=./aks-foundation output external_secrets_keyvault_uri
+#
+# then paste the values below (or override per-environment in base_chart).
+# ──────────────────────────────────────────────────────────────────────────────
+azure:
+  tenant_id: ""
+  workload_identity_client_id: ""
+  keyvault_uri: ""
+
+clusterSecretStore:
+  name: azure-keyvault
+  serviceAccountName: external-secrets
+  serviceAccountNamespace: control-plane-system
+
+demo:
+  enabled: true
+  namespace: control-plane-system
+  externalSecretName: eso-demo
+  targetSecretName: eso-demo-secret
+  remoteKey: eso-demo-secret
+  refreshInterval: 1h
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Upstream chart values — see https://github.com/external-secrets/external-secrets/blob/main/deploy/charts/external-secrets/values.yaml
+# Only the controller talks to Azure Key Vault, so workload identity is wired
+# on the controller deployment only. Webhook and certController do not need
+# the federated identity credential.
+# ──────────────────────────────────────────────────────────────────────────────
+external-secrets:
+  installCRDs: true
+  replicaCount: 1
+
+  serviceAccount:
+    create: true
+    name: external-secrets
+    annotations:
+      azure.workload.identity/client-id: ""  # set via base_chart values override
+
+  podLabels:
+    azure.workload.identity/use: "true"
+
+  webhook:
+    replicaCount: 1
+
+  certController:
+    replicaCount: 1
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi

@@ -1,0 +1,25 @@
+apiVersion: v2
+name: external-secrets
+description: External Secrets Operator addon — syncs secrets from external stores (Azure Key Vault) into the cluster via Workload Identity
+
+type: application
+
+version: 0.1.0
+
+appVersion: "0.10.5"
+
+keywords:
+  - External Secrets
+  - Azure Key Vault
+  - Workload Identity
+  - Control Plane System
+
+home: https://external-secrets.io
+
+sources:
+  - https://github.com/external-secrets/external-secrets
+
+dependencies:
+  - name: external-secrets
+    version: 0.10.5
+    repository: https://charts.external-secrets.io
