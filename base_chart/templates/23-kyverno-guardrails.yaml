@@ -35,6 +35,8 @@ spec:
       - Force=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      # Consistent with the engine app; harmless for the small ClusterPolicy CR.
+      - ServerSideApply=true
     {{- with .Values.global.control_plane.deployment }}
     retry:
       limit: {{ .limit }}

@@ -44,6 +44,8 @@ spec:
       - Force=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      # Kyverno's CRDs exceed the 256KB client-side last-applied annotation limit.
+      - ServerSideApply=true
     {{- with .Values.global.control_plane.deployment }}
     retry:
       limit: {{ .limit }}
