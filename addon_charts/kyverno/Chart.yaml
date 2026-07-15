@@ -1,0 +1,21 @@
+apiVersion: v2
+name: kyverno
+description: Admission policy engine (Kyverno) for the control plane cluster — guardrails-as-code
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.18.2"
+
+keywords:
+  - Kyverno
+  - Policy Engine
+  - Admission Control
+  - Guardrails
+  - Control Plane System
+
+dependencies:
+  - name: kyverno
+    version: 3.8.2
+    repository: https://kyverno.github.io/kyverno/

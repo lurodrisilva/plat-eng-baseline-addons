@@ -1,0 +1,55 @@
+---
+{{- if (.Values.kyverno.enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.kyverno.addon_name }}
+  namespace: {{ .Values.global.control_plane.namespace }}
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    argocd.argoproj.io/sync-wave: "22"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.global.control_plane.project }}
+  source:
+    repoURL: {{ .Values.global.control_plane.repo }}
+    targetRevision: HEAD
+    path: {{ printf "addon_charts/%s" .Values.kyverno.addon_name }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.kyverno.namespace }}
+  ignoreDifferences:
+    # Kyverno rewrites its own webhook configs at runtime — ignore that managed drift.
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      managedFieldsManagers:
+        - kyverno
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      managedFieldsManagers:
+        - kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - Force=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    {{- with .Values.global.control_plane.deployment }}
+    retry:
+      limit: {{ .limit }}
+      backoff:
+        duration: {{ .backoff.duration }}
+        factor: {{ .backoff.factor }}
+        maxDuration: {{ .backoff.maxDuration }}
+    {{- end }}
+{{- end }}

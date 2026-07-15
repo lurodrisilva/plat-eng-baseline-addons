@@ -1,0 +1,66 @@
+---
+# G1 — no :latest / unpinned image tags.
+# A platform-locked knob (CONTEXT.md): the image tag policy carries a guardrail, so
+# overriding it must be refused at admission. This is J3's defining boundary firing.
+#
+# Rollout: failureAction Audit fleet-wide (observe, never block) + failureActionOverrides
+# pinning Enforce to the proof namespace. Widening enforcement later = a reviewed PR.
+# (spec.validationFailureAction is deprecated — use rule-level validate.failureAction.)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: "G1 — Disallow :latest / unpinned image tags"
+    policies.kyverno.io/category: "Best Practices"
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Requires every container image to carry an explicit, non-":latest" tag.
+      Mutable tags make deployments irreproducible and defeat image provenance.
+spec:
+  background: true
+  webhookConfiguration:
+    # Ignore during rollout so a Kyverno outage cannot wedge admission.
+    failurePolicy: {{ .Values.guardrails.failure_policy | default "Ignore" }}
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - {{ .Values.guardrails.enforce_namespace | default "guardrail-proof" }}
+        message: "An explicit image tag is required (G1)."
+        pattern:
+          spec:
+            containers:
+              - image: "*:*"
+    - name: validate-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              operations:
+                - CREATE
+                - UPDATE
+      validate:
+        failureAction: Audit
+        failureActionOverrides:
+          - action: Enforce
+            namespaces:
+              - {{ .Values.guardrails.enforce_namespace | default "guardrail-proof" }}
+        message: "Using a mutable ':latest' image tag is not allowed (G1)."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"

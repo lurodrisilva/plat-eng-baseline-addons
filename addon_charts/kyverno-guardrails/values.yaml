@@ -1,0 +1,8 @@
+# Values for the kyverno-guardrails addon (the guardrail catalog).
+# Applied one sync-wave AFTER the kyverno engine so the ClusterPolicy CRD exists.
+guardrails:
+  # Namespace that enforces guardrails (audit everywhere else) — the enforcement proof target.
+  enforce_namespace: guardrail-proof
+  # Rollout stance while burning down existing violations. Ignore = a Kyverno
+  # outage cannot wedge admission; flip to Fail once the engine is proven stable.
+  failure_policy: Ignore

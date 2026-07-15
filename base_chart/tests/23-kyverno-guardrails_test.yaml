@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: kyverno-guardrails ArgoCD Application
+templates:
+  - templates/23-kyverno-guardrails.yaml
+tests:
+  - it: should render no documents when disabled
+    set:
+      kyverno_guardrails.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render one Application when enabled
+    set:
+      kyverno_guardrails.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Application
+      - isAPIVersion:
+          of: argoproj.io/v1alpha1
+      - equal:
+          path: metadata.name
+          value: kyverno-guardrails
+      - equal:
+          path: metadata.namespace
+          value: control-plane-system
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "23"
+      - equal:
+          path: spec.source.path
+          value: addon_charts/kyverno-guardrails
+      - equal:
+          path: spec.destination.namespace
+          value: kyverno
+      - contains:
+          path: metadata.finalizers
+          content: resources-finalizer.argocd.argoproj.io
+      - equal:
+          path: spec.syncPolicy.automated.prune
+          value: true
+      - equal:
+          path: spec.syncPolicy.automated.selfHeal
+          value: true
+      - contains:
+          path: spec.syncPolicy.syncOptions
+          content: CreateNamespace=true
+      - contains:
+          path: spec.syncPolicy.syncOptions
+          content: PruneLast=true
+      - equal:
+          path: spec.syncPolicy.retry.limit
+          value: 5
+      - matchSnapshot:
+          path: spec.syncPolicy

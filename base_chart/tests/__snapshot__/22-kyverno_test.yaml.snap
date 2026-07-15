@@ -1,0 +1,19 @@
+should render one Application when enabled:
+  1: |
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      backoff:
+        duration: 240s
+        factor: 2
+        maxDuration: 10m
+      limit: 5
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - Force=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true

@@ -1,0 +1,46 @@
+---
+{{- if (.Values.kyverno_guardrails.enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.kyverno_guardrails.addon_name }}
+  namespace: {{ .Values.global.control_plane.namespace }}
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # One wave after the engine: the ClusterPolicy CRD must exist first.
+    argocd.argoproj.io/sync-wave: "23"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.global.control_plane.project }}
+  source:
+    repoURL: {{ .Values.global.control_plane.repo }}
+    targetRevision: HEAD
+    path: {{ printf "addon_charts/%s" .Values.kyverno_guardrails.addon_name }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.kyverno_guardrails.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - Force=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    {{- with .Values.global.control_plane.deployment }}
+    retry:
+      limit: {{ .limit }}
+      backoff:
+        duration: {{ .backoff.duration }}
+        factor: {{ .backoff.factor }}
+        maxDuration: {{ .backoff.maxDuration }}
+    {{- end }}
+{{- end }}
