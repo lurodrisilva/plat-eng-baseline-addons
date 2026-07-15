@@ -1,0 +1,27 @@
+# Values for the Kyverno admission policy engine addon.
+# These nest under the `kyverno` dependency (chart 3.8.2 / app v1.18.2).
+# Verify paths against the pinned chart's values.yaml before changing:
+#   helm show values kyverno/kyverno --version 3.8.2
+kyverno:
+  # HA admission controller — a wedged single replica must not gate cluster admission.
+  admissionController:
+    replicas: 3
+    container:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 512Mi
+  # Background controller processes existing resources for audit/PolicyReport.
+  backgroundController:
+    replicas: 1
+    container:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+  reportsController:
+    replicas: 1
+  cleanupController:
+    replicas: 1

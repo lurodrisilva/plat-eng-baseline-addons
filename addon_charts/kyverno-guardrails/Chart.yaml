@@ -1,0 +1,16 @@
+apiVersion: v2
+name: kyverno-guardrails
+description: Guardrails-as-code (Kyverno ClusterPolicies) — the platform guardrail catalog
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.0.0"
+
+keywords:
+  - Kyverno
+  - Guardrails
+  - ClusterPolicy
+  - Policy as Code
+  - Control Plane System

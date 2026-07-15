@@ -140,3 +140,19 @@ external_secrets:
     tenant_id: "8f77fb2e-7e77-477e-9a03-d078b7aad9c3"
     workload_identity_client_id: "b43ac0e5-c85b-4a26-b644-d3bf8797a38c"
     keyvault_uri: "https://eso-dev-c6f0b8.vault.azure.net/"
+
+# Kyverno — admission policy engine (guardrails-as-code). See ADR-0011.
+# Installs the engine + its CRDs at sync-wave 22. Disabled by default; the
+# environment overlay enables it at cluster-apply time (audit-first is safe).
+kyverno:
+  addon_name: kyverno
+  enabled: false
+  namespace: kyverno
+
+# Guardrail catalog (Kyverno ClusterPolicies) — applied at wave 23, one wave
+# after the engine so the ClusterPolicy CRD exists. Slice 1 ships G1 only,
+# audit-first fleet-wide with enforce scoped to the `guardrail-proof` namespace.
+kyverno_guardrails:
+  addon_name: kyverno-guardrails
+  enabled: false
+  namespace: kyverno
