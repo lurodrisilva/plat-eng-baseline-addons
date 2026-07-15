@@ -4,9 +4,9 @@ description: Admission policy engine (Kyverno) for the control plane cluster —
 
 type: application
 
-version: 0.1.0
+version: 0.2.0
 
-appVersion: "1.18.2"
+appVersion: "1.14.5"
 
 keywords:
   - Kyverno
@@ -17,5 +17,9 @@ keywords:
 
 dependencies:
   - name: kyverno
-    version: 3.8.2
+    # Stable 1.14 line: ships the clusterpolicies.kyverno.io CRD by default and
+    # supports rule-level failureAction + failureActionOverrides. NOT 3.8.x/1.18 —
+    # that line drops the ClusterPolicy CRD from the default install and the
+    # admission controller crashloops on its sanity check.
+    version: 3.4.6
     repository: https://kyverno.github.io/kyverno/
