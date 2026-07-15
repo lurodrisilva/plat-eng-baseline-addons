@@ -17,3 +17,4 @@ should render one Application when enabled:
       - Force=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      - ServerSideApply=true
