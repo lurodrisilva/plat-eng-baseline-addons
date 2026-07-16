@@ -37,16 +37,25 @@ providers_config:
 # binding, per-cluster network facts, and the platform's XRDs + Compositions. Sourced from
 # plat-eng-control-plane so all of that versions together.
 #
-# Disabled deliberately. Two things must land before this is flipped on:
-#   1. plat-eng-control-plane#1 — until it merges, master is scaffold-only and `path: chart`
-#      does not exist.
-#   2. plat-eng-aks-foundation#11 (provider.defaultActivations: []) plus a one-time
-#      `kubectl delete managedresourceactivationpolicy default`. While the wildcard policy
-#      stands, this chart's provider-azure-network activates ~238 resource definitions at once
-#      and takes the Free-tier API server offline — it already did once, on 2026-07-16.
+# ENABLED 2026-07-16. Both preconditions that held this back are met and were re-verified on
+# aks-test before flipping:
+#   1. plat-eng-control-plane#1 merged, so `path: chart` exists. Master now also carries the
+#      Managed Redis engine (ADR-0019) and ships `redis.enabled: false`, so this app installs
+#      the SQL API only — it will not try to create a cache Azure refuses to provision.
+#   2. Safe Start is genuinely in force, not merely merged. The `crossplane` Application runs
+#      with `provider.defaultActivations: []`, `managedresourceactivationpolicy default` returns
+#      NotFound, and provider-azure-network sits at 1 Active MRD (privateendpoints, named by the
+#      control plane's own policy) against 118 Inactive. That 1-vs-118 is the measurement that
+#      matters: under the wildcard policy this chart activated ~238 resource definitions at once
+#      and took the Free-tier API server offline, on 2026-07-16.
+#
+# Until this flip the control plane existed on aks-test only because it was applied by hand.
+# Nothing reconciled it and nothing owned it, so it would not have survived a cluster rebuild —
+# which is the whole point of the app-of-apps. ArgoCD adopts those objects on first sync
+# (ServerSideApply, below).
 crossplane_control_plane:
   addon_name: crossplane-control-plane
-  enabled: false
+  enabled: true
   namespace: resources-system
   repo: https://github.com/lurodrisilva/plat-eng-control-plane
   targetRevision: HEAD
