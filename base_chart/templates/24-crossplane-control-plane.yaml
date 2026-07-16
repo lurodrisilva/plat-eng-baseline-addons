@@ -1,0 +1,54 @@
+---
+{{- if (.Values.crossplane_control_plane.enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.crossplane_control_plane.addon_name }}
+  namespace: {{ .Values.global.control_plane.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "24"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.global.control_plane.project }}
+  source:
+    # The only addon sourced from another repo: the Crossplane control plane is versioned in
+    # plat-eng-control-plane so its providers, XRDs and Compositions move together. This repo
+    # only decides whether it is installed. The repo is public, so no ArgoCD repository
+    # credential is needed.
+    repoURL: {{ .Values.crossplane_control_plane.repo }}
+    targetRevision: {{ .Values.crossplane_control_plane.targetRevision }}
+    path: {{ .Values.crossplane_control_plane.path }}
+    helm:
+      valueFiles:
+{{- range .Values.crossplane_control_plane.valueFiles }}
+        - {{ . }}
+{{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.crossplane_control_plane.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - Force=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      # Provider packages and XRDs exceed the 256KB client-side last-applied annotation limit,
+      # the same reason kyverno and azure-service-operator set this. Without it the sync fails
+      # with "metadata.annotations: Too long" and retries forever with the old config.
+      - ServerSideApply=true
+    {{- with .Values.global.control_plane.deployment }}
+    retry:
+      limit: {{ .limit }}
+      backoff:
+        duration: {{ .backoff.duration }}
+        factor: {{ .backoff.factor }}
+        maxDuration: {{ .backoff.maxDuration }}
+    {{- end }}
+{{- end }}

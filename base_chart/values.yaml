@@ -15,16 +15,47 @@ resources:
   enabled: false
   namespace: resources-system
 
+# SUPERSEDED by crossplane_control_plane below — plat-eng-control-plane now owns every
+# Crossplane API object (provider packages included), so these two never get enabled. They are
+# kept only until their addon_charts/ are removed. Do not flip them on: their Provider CRs would
+# duplicate the ones the control-plane chart installs, and two packages resolving the same
+# dependency at different versions degrades the whole provider family.
 providers:
   addon_name: providers
   enabled: false
   namespace: resources-system
 
-# This provider is configured thru terraform, so we keep it disabled here to avoid conflicts.
+# Also superseded. This chart's ProviderConfig is azure.m.upbound.io + SystemAssignedManagedIdentity
+# with unfilled <SUBSCRIPTION_ID> placeholders; the control-plane chart ships the real one
+# (ClusterProviderConfig, Secret-sourced from the Terraform-created service principal).
 providers_config:
   addon_name: providers-config
   enabled: false
   namespace: resources-system
+
+# The Crossplane control plane: provider packages, composition functions, the Azure credential
+# binding, per-cluster network facts, and the platform's XRDs + Compositions. Sourced from
+# plat-eng-control-plane so all of that versions together.
+#
+# Disabled deliberately. Two things must land before this is flipped on:
+#   1. plat-eng-control-plane#1 — until it merges, master is scaffold-only and `path: chart`
+#      does not exist.
+#   2. plat-eng-aks-foundation#11 (provider.defaultActivations: []) plus a one-time
+#      `kubectl delete managedresourceactivationpolicy default`. While the wildcard policy
+#      stands, this chart's provider-azure-network activates ~238 resource definitions at once
+#      and takes the Free-tier API server offline — it already did once, on 2026-07-16.
+crossplane_control_plane:
+  addon_name: crossplane-control-plane
+  enabled: false
+  namespace: resources-system
+  repo: https://github.com/lurodrisilva/plat-eng-control-plane
+  targetRevision: HEAD
+  path: chart
+  valueFiles:
+    - values.yaml
+    # Network IDs are per-cluster and generated from terraform output. Swap this file when
+    # pointing the app at another environment.
+    - values-aks-test.yaml
 
 backup: # not yet configured.
   addon_name: backup

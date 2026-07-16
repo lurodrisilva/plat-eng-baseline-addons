@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: crossplane-control-plane ArgoCD Application
+templates:
+  - templates/24-crossplane-control-plane.yaml
+tests:
+  - it: should render no documents when disabled
+    set:
+      crossplane_control_plane.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render no documents by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render one Application when enabled
+    set:
+      crossplane_control_plane.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Application
+      - isAPIVersion:
+          of: argoproj.io/v1alpha1
+      - equal:
+          path: metadata.name
+          value: crossplane-control-plane
+      - equal:
+          path: metadata.namespace
+          value: control-plane-system
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "24"
+      - equal:
+          path: spec.destination.namespace
+          value: resources-system
+      - contains:
+          path: metadata.finalizers
+          content: resources-finalizer.argocd.argoproj.io
+  - it: should source from the control-plane repo, not this one
+    set:
+      crossplane_control_plane.enabled: true
+    asserts:
+      - equal:
+          path: spec.source.repoURL
+          value: https://github.com/lurodrisilva/plat-eng-control-plane
+      - equal:
+          path: spec.source.path
+          value: chart
+  # Provider packages and XRDs exceed the client-side last-applied annotation limit. Without
+  # ServerSideApply the sync fails and ArgoCD retries forever with the snapshotted config.
+  - it: must set ServerSideApply
+    set:
+      crossplane_control_plane.enabled: true
+    asserts:
+      - contains:
+          path: spec.syncPolicy.syncOptions
+          content: ServerSideApply=true
+  - it: should carry both the base and the per-environment value files
+    set:
+      crossplane_control_plane.enabled: true
+    asserts:
+      - equal:
+          path: spec.source.helm.valueFiles
+          value:
+            - values.yaml
+            - values-aks-test.yaml
+  - it: should allow overriding the environment value file
+    set:
+      crossplane_control_plane.enabled: true
+      crossplane_control_plane.valueFiles:
+        - values.yaml
+        - values-prod.yaml
+    asserts:
+      - equal:
+          path: spec.source.helm.valueFiles
+          value:
+            - values.yaml
+            - values-prod.yaml
