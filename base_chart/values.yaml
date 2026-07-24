@@ -146,11 +146,6 @@ azure_service_operator:
   enabled: false
   namespace: resources-system
 
-strimzi_operator:
-  addon_name: strimzi-operator
-  enabled: true
-  namespace: messaging-system
-
 k6_operator:
   addon_name: k6-operator
   enabled: true

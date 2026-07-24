@@ -62,7 +62,6 @@ kubectl get applications -n control-plane-system
 # reloader
 # cloudnative-pg
 # azure-service-operator
-# strimzi-operator
 # k6-operator
 # wiremock
 ```
