@@ -23,6 +23,19 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.kyverno_guardrails.namespace }}
+  ignoreDifferences:
+    # Kyverno's admission webhook defaults these fields onto every ClusterPolicy at
+    # apply time. They are absent from the chart manifest, so ArgoCD sees the live
+    # object as OutOfSync forever (selfHeal reapplies, the webhook re-adds them). The
+    # policy is otherwise correct and Healthy — ignore the controller-owned defaults.
+    - group: kyverno.io
+      kind: ClusterPolicy
+      jqPathExpressions:
+        - .spec.admission
+        - .spec.emitWarning
+        - .spec.validationFailureAction
+        - .spec.rules[].validate.skipBackgroundRequests
+        - .spec.rules[].validate.allowExistingViolations
   syncPolicy:
     automated:
       prune: true
