@@ -25,3 +25,17 @@ kyverno:
     replicas: 1
   cleanupController:
     replicas: 1
+
+  # CRD apply strategy for ArgoCD.
+  # clusterpolicies.kyverno.io and policies.kyverno.io each ship a ~1.4MB OpenAPI
+  # schema. ArgoCD's default client-side apply stashes the whole manifest in the
+  # kubectl.kubernetes.io/last-applied-configuration annotation, which blows the
+  # 262144-byte annotation limit — the apply fails, and because the app also sets
+  # syncOptions Force=true, ArgoCD then deletes the CRD and fails to recreate it
+  # (which silently drops every ClusterPolicy, guardrails included).
+  # Replace=true switches ArgoCD to kubectl replace/create for these CRDs (no
+  # last-applied annotation), so the large CRDs apply cleanly. This is the
+  # Kyverno-documented ArgoCD install path (see the chart's crds.annotations note).
+  crds:
+    annotations:
+      argocd.argoproj.io/sync-options: Replace=true
