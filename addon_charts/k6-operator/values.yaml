@@ -58,6 +58,9 @@ k6-operator:
         drop:
           - ALL
 
-  # Pin operator pod to dedicated AKS node pool
+  # Pin operator pod to the platform's default AKS node pool.
+  # NOTE: the pool name must match a real agentpool label on the cluster
+  # (terraform aks-foundation default = "nodepool"); "nodepool4" does not
+  # exist here and left the operator Pending/unschedulable.
   nodeSelector:
-    agentpool: nodepool4
+    agentpool: nodepool
