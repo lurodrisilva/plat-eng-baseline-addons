@@ -178,7 +178,7 @@ external_secrets:
   namespace: control-plane-system
   azure:
     tenant_id: "8f77fb2e-7e77-477e-9a03-d078b7aad9c3"
-    workload_identity_client_id: "b43ac0e5-c85b-4a26-b644-d3bf8797a38c"
+    workload_identity_client_id: "37548b65-f3f3-4434-92b9-67a5b72dcc4a"
     keyvault_uri: "https://eso-dev-c6f0b8.vault.azure.net/"
 
 # Kyverno — admission policy engine (guardrails-as-code). See ADR-0011.
