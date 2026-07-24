@@ -52,5 +52,23 @@ tests:
       - equal:
           path: spec.syncPolicy.retry.limit
           value: 5
+      # ignoreDifferences: suppress the fields Kyverno's webhook defaults onto the
+      # ClusterPolicy (else the app is perpetually OutOfSync).
+      - equal:
+          path: spec.ignoreDifferences[0].group
+          value: kyverno.io
+      - equal:
+          path: spec.ignoreDifferences[0].kind
+          value: ClusterPolicy
+      - contains:
+          path: spec.ignoreDifferences[0].jqPathExpressions
+          content: .spec.validationFailureAction
+      # Rule-level field (NOT under .validate) — the path that must not regress.
+      - contains:
+          path: spec.ignoreDifferences[0].jqPathExpressions
+          content: .spec.rules[].skipBackgroundRequests
+      - contains:
+          path: spec.ignoreDifferences[0].jqPathExpressions
+          content: .spec.rules[].validate.allowExistingViolations
       - matchSnapshot:
           path: spec.syncPolicy
