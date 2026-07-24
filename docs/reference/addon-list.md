@@ -58,19 +58,6 @@ Features:
 - Workload identity and service principal authentication
 - Supports Azure databases, networking, storage, and more
 
-### strimzi-operator
-
-**Purpose**: Strimzi Kafka operator — deploys and manages Kafka clusters, topics, and users on Kubernetes
-**Namespace**: messaging-system
-**Version**: 0.51.0
-**Upstream**: https://strimzi.io/charts/
-
-Features:
-- Declarative Kafka cluster management via `Kafka` / `KafkaTopic` / `KafkaUser` CRDs
-- Watches all namespaces (`watchAnyNamespace: true`)
-- Leader election for safe multi-replica operation
-- `ServerSideApply=true` for large CRDs
-
 ### k6-operator
 
 **Purpose**: Grafana k6 Kubernetes operator — runs distributed load tests against cluster workloads
@@ -253,7 +240,6 @@ Estimated resource usage when enabled:
 | reloader | 10m | 32Mi | - |
 | cloudnative-pg | 100m | 100Mi | - |
 | azure-service-operator | 200m | 256Mi | - |
-| strimzi-operator | 200m | 384Mi | - |
 | k6-operator | 100m | 128Mi | - |
 | wiremock | 100m | 256Mi | - |
 | metrics-server | 100m | 200Mi | - |
@@ -285,7 +271,6 @@ Addons are deployed in order based on sync wave:
 | 16 | observability |
 | 17 | cloudnative-pg |
 | 18 | azure-service-operator |
-| 19 | strimzi-operator |
 | 20 | k6-operator |
 | 21 | wiremock |
 

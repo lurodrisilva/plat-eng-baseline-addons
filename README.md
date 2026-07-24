@@ -171,7 +171,6 @@ This GitOps repository manages Kubernetes platform addons through ArgoCD Applica
 | **reloader** | Auto-reload pods on ConfigMap/Secret changes | control-plane-system |
 | **cloudnative-pg** | PostgreSQL operator for databases | resources-system |
 | **azure-service-operator** | Manage Azure resources via Kubernetes CRDs | resources-system |
-| **strimzi-operator** | Strimzi Kafka operator | messaging-system |
 | **k6-operator** | Grafana k6 distributed load-testing operator | testing-system |
 | **wiremock** | Shared HTTP API mock server for test/preview tiers | testing-system |
 

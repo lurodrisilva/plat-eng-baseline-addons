@@ -108,7 +108,6 @@ Check `base_chart/values.yaml` for current status. As of now:
 - reloader
 - cloudnative-pg
 - azure-service-operator
-- strimzi-operator
 - k6-operator
 - wiremock
 
