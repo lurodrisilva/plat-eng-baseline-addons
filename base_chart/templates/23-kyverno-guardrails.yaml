@@ -34,7 +34,8 @@ spec:
         - .spec.admission
         - .spec.emitWarning
         - .spec.validationFailureAction
-        - .spec.rules[].validate.skipBackgroundRequests
+        # skipBackgroundRequests is a rule-level field (NOT under .validate).
+        - .spec.rules[].skipBackgroundRequests
         - .spec.rules[].validate.allowExistingViolations
   syncPolicy:
     automated:
