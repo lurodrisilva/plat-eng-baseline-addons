@@ -4,15 +4,13 @@ cert-manager:
     enabled: true
   prometheus:
     enabled: false
-  webhook:
-    timeoutSeconds: 4
   global:
     leaderElection:
       namespace: control-plane-system
 
   # Deployment Section
   namespace: control-plane-system
-  strategy: 
+  strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 0
@@ -20,10 +18,46 @@ cert-manager:
   podDisruptionBudget:
     enabled: true
 
-resources:
-  limits:
-    cpu: 100m
-    memory: 100Mi
-  requests:
-    cpu: 100m
-    memory: 100Mi
+  # Resources. These MUST stay nested under `cert-manager:` — this wrapper chart
+  # has no templates/ of its own, so a `resources:` block at the top level of
+  # this file is delivered to nothing and every cert-manager pod renders with no
+  # requests at all. That is not a cosmetic omission on this cluster: a pod with
+  # no CPU request is invisible to the scheduler's accounting, so it will happily
+  # land on a node that is already the most requested one. Pinned by
+  # tests/resources_test.yaml so the indentation cannot regress silently.
+  #
+  # The controller value keeps the 100m/100Mi this file always intended.
+  resources:
+    limits:
+      cpu: 100m
+      memory: 100Mi
+    requests:
+      cpu: 100m
+      memory: 100Mi
+
+  # cainjector and webhook are separate Deployments with their own keys, so the
+  # controller's `resources` above does not reach them. cainjector caches CRDs
+  # and Secrets to inject CA bundles, and its memory grows with the cluster, so
+  # it gets headroom above its request rather than a limit equal to it.
+  cainjector:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+  webhook:
+    timeoutSeconds: 4
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# `startupapicheck` is deliberately left unset: it is a short-lived Job that
+# exits once the API is answering, not a long-running Deployment, so it is not
+# part of the steady-state footprint this file is sizing.
