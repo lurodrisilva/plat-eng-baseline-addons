@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# Pins the fix for an inert values block. This wrapper chart has no templates/ of
+# its own, so a `resources:` key at the TOP LEVEL of values.yaml is delivered to
+# nothing — every cert-manager pod then renders with no requests and no limits,
+# which a `helm lint` and a `helm template` both accept in silence. The failure
+# is invisible until a pod with no CPU request lands on the node that is already
+# the most requested one, because a pod with no request is invisible to the
+# scheduler's accounting.
+#
+# These tests assert the rendered VALUES, not the presence of a key, and they
+# cover all three long-running Deployments separately: `resources` reaches only
+# the controller, so cainjector and webhook need their own nested keys and a
+# regression could restore requests to one while dropping the others.
+#
+# `startupapicheck` is deliberately not asserted — it is a short-lived Job, not
+# part of the steady-state footprint this suite guards.
+suite: cert-manager resources reach the subchart
+tests:
+  - it: gives the controller its intended 100m/100Mi
+    templates:
+      - charts/cert-manager/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 100m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 100Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.cpu
+          value: 100m
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 100Mi
+
+  - it: keeps the controller at two replicas so the PodDisruptionBudget can be satisfied
+    templates:
+      - charts/cert-manager/templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+
+  - it: gives cainjector a memory limit above its request, because its cache grows with the cluster
+    templates:
+      - charts/cert-manager/templates/cainjector-deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 50m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 128Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 256Mi
+
+  - it: gives the webhook its own requests
+    templates:
+      - charts/cert-manager/templates/webhook-deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 50m
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 128Mi
+
+  - it: still applies the webhook timeout the nested block had to absorb
+    templates:
+      - charts/cert-manager/templates/webhook-mutating-webhook.yaml
+    asserts:
+      - equal:
+          path: webhooks[0].timeoutSeconds
+          value: 4
