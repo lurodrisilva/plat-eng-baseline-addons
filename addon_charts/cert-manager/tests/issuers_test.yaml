@@ -3,9 +3,12 @@
 # Two silent-failure modes are pinned here, both of which render valid YAML that
 # the API server accepts and that then never issues a certificate:
 #
-#   1. The ExperimentalGatewayAPISupport feature gate missing from the controller
-#      config. cert-manager accepts a gatewayHTTPRoute solver without it and
-#      simply never acts on a challenge. Nothing logs an error at apply time.
+#   1. The ExperimentalGatewayAPISupport gate not reaching the controller as a
+#      `--feature-gates` CLI argument. cert-manager accepts a gatewayHTTPRoute
+#      solver without it, creates the solver Pod and Service, reports the
+#      Certificate as merely "pending", and refuses every challenge with
+#      `gateway api is not enabled` — visible only in the Challenge's
+#      status.reason.
 #   2. The solver drifting to `ingress`. That is the shape almost every tutorial
 #      shows, and it cannot work here: this cluster has no ingress controller at
 #      all — the front door is a Gateway.
@@ -14,13 +17,17 @@
 # Microsoft's, so its TXT records are not ours to publish.
 suite: cert-manager can actually solve challenges through the Gateway
 tests:
-  - it: enables the Gateway API feature gate in the controller config
+  # Asserts the CLI ARGUMENT specifically, not the mounted ControllerConfiguration.
+  # The config-file route was tried first on this cluster: the gate was confirmed
+  # present in the ConfigMap and the solver still refused every challenge. A test
+  # that accepted either source would have passed against the broken deployment.
+  - it: passes the Gateway API feature gate to the controller as a CLI argument
     templates:
-      - charts/cert-manager/templates/controller-config.yaml
+      - charts/cert-manager/templates/deployment.yaml
     asserts:
-      - matchRegex:
-          path: data["config.yaml"]
-          pattern: "ExperimentalGatewayAPISupport: true"
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --feature-gates=ExperimentalGatewayAPISupport=true
 
   - it: creates both issuers, so switching to production is a one-line change
     templates:
