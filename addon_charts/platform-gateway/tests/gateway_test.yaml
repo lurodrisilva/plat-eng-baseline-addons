@@ -99,14 +99,24 @@ tests:
           path: spec.issuerRef.kind
           value: ClusterIssuer
 
-  - it: ships pointing at staging, because production allows only 5 duplicates a week
+  # Now production: the staging chain was proven end to end on aks-test first
+  # (certificate Ready 2026-07-27T12:55:57Z), which is the only reason this is a
+  # safe value to ship. A staging certificate is not browser-trusted, so Entra
+  # sign-in cannot work until this is letsencrypt-prod — the cert is in the
+  # sign-in path, not merely hardening it.
+  #
+  # This assertion exists to catch a silent drift to a typo'd or nonexistent
+  # issuer name. cert-manager treats an unresolvable issuerRef as a pending
+  # Certificate, not an error, so the Gateway would keep serving the old Secret
+  # until it expired and only then fail — in production, on the public origin.
+  - it: points at the production issuer, whose chain browsers actually trust
     documentSelector:
       path: kind
       value: Certificate
     asserts:
       - equal:
           path: spec.issuerRef.name
-          value: letsencrypt-staging
+          value: letsencrypt-prod
 
   - it: puts the Certificate in the Gateway's own namespace, so no ReferenceGrant is needed
     asserts:

@@ -45,12 +45,17 @@ tls:
 
   # Which ClusterIssuer signs it. The cert-manager addon creates both.
   #
-  # SHIP ON STAGING. Prove the whole chain end to end — Gateway programmed, DNS
-  # label resolving, challenge solved, Secret written, listener programmed — and
-  # only then flip this to `letsencrypt-prod`. Production allows 5 duplicate
-  # certificates per week, and burning that budget on a misconfiguration costs a
-  # week on a hostname whose budget is not even ours.
+  # PRODUCTION, and only because the whole chain was first proven on staging.
+  # Every link was verified on aks-test before this flip: Gateway PROGRAMMED at
+  # 172.193.160.6, the azure-dns-label-name resolving, the HTTP-01 challenge
+  # solved through this Gateway, the Secret written, and the certificate Ready
+  # (staging chain `(STAGING) Dastardly Durum YR1`, 2026-07-27T12:55:57Z).
   #
-  # A staging certificate is NOT browser-trusted, so Entra sign-in will not work
-  # until this says `letsencrypt-prod`. That is the expected intermediate state.
-  issuer: letsencrypt-staging
+  # Going back to `letsencrypt-staging` is free; coming back here is not. The
+  # production endpoint allows 5 duplicate certificates per week, and on this
+  # hostname the per-registered-domain budget is not even ours — `cloudapp.azure.com`
+  # is absent from the Public Suffix List, so the budget belongs to `azure.com`
+  # and is shared with every other Azure tenant (ADR-0026). If a change might
+  # break issuance, prove it on staging first: burning this budget costs a week
+  # on a name we do not control.
+  issuer: letsencrypt-prod
