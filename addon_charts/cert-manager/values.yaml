@@ -9,21 +9,22 @@ cert-manager:
       namespace: control-plane-system
 
   # Gateway API support is OFF by default in cert-manager and must be switched on
-  # explicitly, or the HTTP-01 `gatewayHTTPRoute` solver silently never solves a
-  # challenge. This cluster has no ingress controller at all — the front door is
-  # a Gateway (ADR-0025) — so without this gate there is no solver available and
-  # no certificate can ever be issued.
+  # explicitly, or the HTTP-01 `gatewayHTTPRoute` solver never solves a challenge.
+  # This cluster has no ingress controller at all — the front door is a Gateway
+  # (ADR-0025) — so without this gate no certificate can ever be issued.
   #
-  # `config` replaces the whole ControllerConfiguration file, so apiVersion and
-  # kind are required. v1.16.2 has no `enableGatewayAPI` convenience value; that
-  # arrived in a later chart. Verified by rendering: the gate lands in the
-  # controller's config.yaml ConfigMap AND `--leader-election-namespace` survives
-  # as a CLI flag alongside `--config`, so the global setting above still applies.
-  config:
-    apiVersion: controller.config.cert-manager.io/v1alpha1
-    kind: ControllerConfiguration
-    featureGates:
-      ExperimentalGatewayAPISupport: true
+  # This MUST be the top-level `featureGates` string, which the chart renders as a
+  # `--feature-gates` CLI argument. Putting the same gate in the `config` block
+  # (a ControllerConfiguration file, which the chart mounts and always passes via
+  # `--config`) does NOT work: it was tried first, the gate was confirmed present
+  # in the mounted ConfigMap, and the ACME solver still refused every challenge
+  # with `couldn't Present challenge ...: gateway api is not enabled`. The solver
+  # reads the CLI-populated gate registry, not the config file's.
+  #
+  # The failure mode is quiet in the worst way: cert-manager accepts the issuer,
+  # creates the solver Pod and Service, and reports the Certificate as merely
+  # "pending" — nothing surfaces until you read the Challenge's status.reason.
+  featureGates: "ExperimentalGatewayAPISupport=true"
 
   # Deployment Section
   namespace: control-plane-system
