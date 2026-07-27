@@ -3,11 +3,10 @@
 # Two silent-failure modes are pinned here, both of which render valid YAML that
 # the API server accepts and that then never issues a certificate:
 #
-#   1. The ExperimentalGatewayAPISupport gate not reaching the controller as a
-#      `--feature-gates` CLI argument. cert-manager accepts a gatewayHTTPRoute
-#      solver without it, creates the solver Pod and Service, reports the
-#      Certificate as merely "pending", and refuses every challenge with
-#      `gateway api is not enabled` — visible only in the Challenge's
+#   1. `--enable-gateway-api` missing from the controller. cert-manager accepts a
+#      gatewayHTTPRoute solver without it, creates the solver Pod and Service,
+#      reports the Certificate as merely "pending", and refuses every challenge
+#      with `gateway api is not enabled` — visible only in the Challenge's
 #      status.reason.
 #   2. The solver drifting to `ingress`. That is the shape almost every tutorial
 #      shows, and it cannot work here: this cluster has no ingress controller at
@@ -17,11 +16,29 @@
 # Microsoft's, so its TXT records are not ours to publish.
 suite: cert-manager can actually solve challenges through the Gateway
 tests:
-  # Asserts the CLI ARGUMENT specifically, not the mounted ControllerConfiguration.
-  # The config-file route was tried first on this cluster: the gate was confirmed
-  # present in the ConfigMap and the solver still refused every challenge. A test
-  # that accepted either source would have passed against the broken deployment.
-  - it: passes the Gateway API feature gate to the controller as a CLI argument
+  # THE load-bearing assertion. `--enable-gateway-api` defaults to false and the
+  # chart has no value for it, so it can only arrive via extraArgs — and an
+  # extraArgs list is easy to overwrite wholesale in a later edit.
+  #
+  # Do not fold this into the feature-gate assertion below and do not accept
+  # either-one-of-two. The gate was set for two releases while this flag was
+  # absent, and the deployment was broken the entire time: a test that accepted
+  # the gate as sufficient passed against a cluster that could not issue a
+  # certificate at all.
+  - it: enables the Gateway API integration on the controller
+    templates:
+      - charts/cert-manager/templates/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --enable-gateway-api
+
+  # Redundant in v1.16.2 (the gate is BETA, default=true) and asserted only to
+  # keep the stated dependency from being dropped by accident. If a chart bump
+  # ever removes the gate from the binary, this assertion is what will need
+  # deleting — the controller will crashloop on an unrecognized gate, which no
+  # rendering test can detect.
+  - it: states the required feature gate explicitly
     templates:
       - charts/cert-manager/templates/deployment.yaml
     asserts:
