@@ -98,7 +98,17 @@ node_problem_detector:
 
 cert_manager:
   addon_name: cert-manager
-  enabled: false
+  # Enabled for the platform origin (ADR-0025): it issues the TLS certificate the
+  # shared Gateway terminates with. Nothing else on this cluster needs it yet.
+  enabled: true
+  namespace: control-plane-system
+
+# The shared public Gateway for the platform origin — `/` the Developer Control
+# Plane, `/api/v1` the orchestrator, one origin so no CORS enters the governance
+# API (ADR-0024). Syncs at wave 10, after cert-manager at wave 9.
+platform_gateway:
+  addon_name: platform-gateway
+  enabled: true
   namespace: control-plane-system
 
 opentelemetry_operator: # Disabled to save resources.

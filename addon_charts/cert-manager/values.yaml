@@ -8,6 +8,23 @@ cert-manager:
     leaderElection:
       namespace: control-plane-system
 
+  # Gateway API support is OFF by default in cert-manager and must be switched on
+  # explicitly, or the HTTP-01 `gatewayHTTPRoute` solver silently never solves a
+  # challenge. This cluster has no ingress controller at all — the front door is
+  # a Gateway (ADR-0025) — so without this gate there is no solver available and
+  # no certificate can ever be issued.
+  #
+  # `config` replaces the whole ControllerConfiguration file, so apiVersion and
+  # kind are required. v1.16.2 has no `enableGatewayAPI` convenience value; that
+  # arrived in a later chart. Verified by rendering: the gate lands in the
+  # controller's config.yaml ConfigMap AND `--leader-election-namespace` survives
+  # as a CLI flag alongside `--config`, so the global setting above still applies.
+  config:
+    apiVersion: controller.config.cert-manager.io/v1alpha1
+    kind: ControllerConfiguration
+    featureGates:
+      ExperimentalGatewayAPISupport: true
+
   # Deployment Section
   namespace: control-plane-system
   strategy:
@@ -61,3 +78,42 @@ cert-manager:
 # `startupapicheck` is deliberately left unset: it is a short-lived Job that
 # exits once the API is answering, not a long-running Deployment, so it is not
 # part of the steady-state footprint this file is sizing.
+
+# ---------------------------------------------------------------------------
+# ClusterIssuers for the platform origin (ADR-0025 / ADR-0026).
+#
+# Keys below this line belong to THIS wrapper chart, not to the cert-manager
+# subchart — the templates/ directory added alongside this file reads them. Do
+# not nest them under `cert-manager:`; that would hand them to the subchart,
+# which knows nothing about them. (The inverse of the bug that made the
+# `resources` block inert.)
+# ---------------------------------------------------------------------------
+issuers:
+  # Both issuers are created together so switching is a one-line values change
+  # rather than an edit under time pressure. ALWAYS prove the flow on staging
+  # first: the production endpoint permits only 5 duplicate certificates per
+  # week, and on this hostname the per-registered-domain budget is not even ours
+  # (ADR-0026 — `cloudapp.azure.com` is absent from the Public Suffix List, so
+  # the budget is `azure.com`'s and is shared with every other Azure tenant).
+  enabled: true
+
+  # Deliberately empty. Let's Encrypt treats the contact address as optional and
+  # a personal address does not belong in a committed file. Set it per
+  # environment if expiry notices are wanted.
+  email: ""
+
+  staging:
+    name: letsencrypt-staging
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+  production:
+    name: letsencrypt-prod
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+  # The HTTP-01 solver routes the challenge through the shared platform Gateway.
+  # There is no ingress controller on this cluster, so `ingress`-based solvers
+  # cannot work, and DNS-01 is unavailable because the `cloudapp.azure.com` zone
+  # is Microsoft's — we cannot publish its TXT records. HTTP-01 through the
+  # Gateway is the only solver open to us, which also rules out wildcards.
+  gateway:
+    name: platform-origin
+    namespace: control-plane-system
