@@ -1,0 +1,51 @@
+---
+{{- if (.Values.platform_gateway.enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.platform_gateway.addon_name }}
+  namespace: {{ .Values.global.control_plane.namespace }}
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # Wave 10 — after cert-manager (wave 9). The Certificate this Application
+    # creates references a ClusterIssuer that the cert-manager Application owns,
+    # and the HTTP-01 solver needs cert-manager's controller running to act on
+    # it at all.
+    argocd.argoproj.io/sync-wave: "10"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.global.control_plane.project }}
+  source:
+    repoURL: {{ .Values.global.control_plane.repo }}
+    targetRevision: HEAD
+    path: {{ printf "addon_charts/%s" .Values.platform_gateway.addon_name }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.platform_gateway.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The Gateway API CRDs are installed and version-managed by AKS, not by
+      # this chart, so client-side schema validation can lag behind what the
+      # cluster actually accepts.
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    {{- with .Values.global.control_plane.deployment }}
+    retry:
+      limit: {{ .limit }}
+      backoff:
+        duration: {{ .backoff.duration }}
+        factor: {{ .backoff.factor }}
+        maxDuration: {{ .backoff.maxDuration }}
+    {{- end }}
+{{- end }}

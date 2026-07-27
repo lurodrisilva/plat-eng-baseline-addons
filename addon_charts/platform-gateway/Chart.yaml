@@ -1,0 +1,14 @@
+apiVersion: v2
+name: platform-gateway
+description: The shared public Gateway for the platform origin (ADR-0024/0025/0026)
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.0.0"
+
+keywords:
+  - Gateway API
+  - Platform Origin
+  - Control Plane System

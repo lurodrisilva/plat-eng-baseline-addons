@@ -1,0 +1,40 @@
+{{- if .Values.issuers.enabled }}
+{{- range $key := list "staging" "production" }}
+{{- $issuer := index $.Values.issuers $key }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ $issuer.name }}
+  annotations:
+    # Applied after wave 0, so cert-manager's own Deployments and its validating
+    # webhook are Healthy first. A ClusterIssuer submitted while the webhook is
+    # still starting is rejected, and ArgoCD exhausts its retries after five
+    # attempts and then sits Failed — a hard-refresh does not restart an
+    # exhausted operation.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  acme:
+    server: {{ $issuer.server }}
+    {{- with $.Values.issuers.email }}
+    email: {{ . }}
+    {{- end }}
+    privateKeySecretRef:
+      # One account key per issuer. Sharing a key across the staging and
+      # production endpoints would register the same account against two
+      # different ACME directories.
+      name: {{ $issuer.name }}-account-key
+    solvers:
+      - http01:
+          # Routes the challenge through the shared platform Gateway. Requires
+          # the ExperimentalGatewayAPISupport feature gate on the controller —
+          # see the comment in values.yaml. Without it cert-manager accepts this
+          # issuer and then never solves anything.
+          gatewayHTTPRoute:
+            parentRefs:
+              - name: {{ $.Values.issuers.gateway.name }}
+                namespace: {{ $.Values.issuers.gateway.namespace }}
+                kind: Gateway
+                group: gateway.networking.k8s.io
+{{- end }}
+{{- end }}

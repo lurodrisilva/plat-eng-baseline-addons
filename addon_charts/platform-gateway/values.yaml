@@ -1,0 +1,56 @@
+# The shared public Gateway for the platform origin.
+#
+# One origin serves both the Developer Control Plane (`/`) and the platform
+# orchestrator (`/api/v1`), so the browser never makes a cross-origin call and no
+# CORS policy is written into the governance API (ADR-0024). Each workload's own
+# repository owns its `HTTPRoute` and attaches it here — that cross-namespace
+# attachment is what Gateway API's role split exists for, and it is why this is a
+# shared Gateway rather than one per workload (ADR-0025).
+
+gateway:
+  name: platform-origin
+  namespace: control-plane-system
+
+  # Provided by the AKS application routing add-on. NOT `istio`: that class
+  # belongs to the service-mesh add-on, which cannot be enabled at the same time
+  # as this one.
+  className: approuting-istio
+
+  # The Azure-provided hostname. `xpdev-portal-dev` is an Azure DNS label on the
+  # Gateway's load balancer; Azure resolves the full name below.
+  #
+  # ADR-0026 accepts a known risk here. `cloudapp.azure.com` is absent from the
+  # Public Suffix List, so Let's Encrypt scopes its per-registered-domain budget
+  # to `azure.com` — shared with every other Azure tenant, with an override only
+  # Microsoft can raise. Because Entra refuses a non-localhost `http` redirect
+  # URI, this certificate sits in the SIGN-IN PATH: a renewal that loses that
+  # contention takes sign-in down, not merely untrusted. Accepted for aks-test
+  # only. Any origin serving real consumers needs an owned domain.
+  dnsLabel: xpdev-portal-dev
+  hostname: xpdev-portal-dev.westus2.cloudapp.azure.com
+
+  # `from: All` on both listeners. Routes are owned by the workload repositories
+  # in their own namespaces (platform-portal, platform-orchestrator) and more
+  # will attach over time, so a namespace selector here would become a second
+  # place to remember to edit. Conflicts are resolved by hostname and path
+  # precedence, and the HTTP listener additionally has to accept the ACME
+  # challenge route cert-manager creates.
+  allowedRoutesFrom: All
+
+tls:
+  # The Secret the Gateway's HTTPS listener terminates with, created by the
+  # Certificate below in the Gateway's own namespace. Same-namespace, so no
+  # ReferenceGrant is required.
+  secretName: platform-origin-tls
+
+  # Which ClusterIssuer signs it. The cert-manager addon creates both.
+  #
+  # SHIP ON STAGING. Prove the whole chain end to end — Gateway programmed, DNS
+  # label resolving, challenge solved, Secret written, listener programmed — and
+  # only then flip this to `letsencrypt-prod`. Production allows 5 duplicate
+  # certificates per week, and burning that budget on a misconfiguration costs a
+  # week on a hostname whose budget is not even ours.
+  #
+  # A staging certificate is NOT browser-trusted, so Entra sign-in will not work
+  # until this says `letsencrypt-prod`. That is the expected intermediate state.
+  issuer: letsencrypt-staging

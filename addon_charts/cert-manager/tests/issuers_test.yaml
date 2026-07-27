@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# Two silent-failure modes are pinned here, both of which render valid YAML that
+# the API server accepts and that then never issues a certificate:
+#
+#   1. The ExperimentalGatewayAPISupport feature gate missing from the controller
+#      config. cert-manager accepts a gatewayHTTPRoute solver without it and
+#      simply never acts on a challenge. Nothing logs an error at apply time.
+#   2. The solver drifting to `ingress`. That is the shape almost every tutorial
+#      shows, and it cannot work here: this cluster has no ingress controller at
+#      all — the front door is a Gateway.
+#
+# DNS-01 is not an option to drift to either: the cloudapp.azure.com zone is
+# Microsoft's, so its TXT records are not ours to publish.
+suite: cert-manager can actually solve challenges through the Gateway
+tests:
+  - it: enables the Gateway API feature gate in the controller config
+    templates:
+      - charts/cert-manager/templates/controller-config.yaml
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "ExperimentalGatewayAPISupport: true"
+
+  - it: creates both issuers, so switching to production is a one-line change
+    templates:
+      - templates/clusterissuer.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: points staging at the staging ACME directory
+    templates:
+      - templates/clusterissuer.yaml
+    documentSelector:
+      path: metadata.name
+      value: letsencrypt-staging
+    asserts:
+      - equal:
+          path: spec.acme.server
+          value: https://acme-staging-v02.api.letsencrypt.org/directory
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: letsencrypt-staging-account-key
+
+  - it: points production at the production ACME directory with its own account key
+    templates:
+      - templates/clusterissuer.yaml
+    documentSelector:
+      path: metadata.name
+      value: letsencrypt-prod
+    asserts:
+      - equal:
+          path: spec.acme.server
+          value: https://acme-v02.api.letsencrypt.org/directory
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: letsencrypt-prod-account-key
+
+  - it: solves through the Gateway, never through an Ingress this cluster does not have
+    templates:
+      - templates/clusterissuer.yaml
+    documentSelector:
+      path: metadata.name
+      value: letsencrypt-prod
+    asserts:
+      - exists:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute
+      - notExists:
+          path: spec.acme.solvers[0].http01.ingress
+      - equal:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute.parentRefs[0].name
+          value: platform-origin
+      - equal:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute.parentRefs[0].namespace
+          value: control-plane-system
+      - equal:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute.parentRefs[0].kind
+          value: Gateway
+
+  - it: applies the issuers after cert-manager's webhook is up
+    templates:
+      - templates/clusterissuer.yaml
+    documentSelector:
+      path: metadata.name
+      value: letsencrypt-staging
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "1"

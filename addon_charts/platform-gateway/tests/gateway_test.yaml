@@ -1,0 +1,115 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# These assert VALUES that have to AGREE ACROSS RESOURCES, which is where this
+# chart can fail silently. Every failure mode below renders valid YAML, passes
+# `helm lint`, and is accepted by the API server:
+#
+#   - drop the port-80 listener  -> ACME HTTP-01 has no path, renewals stop, and
+#     sign-in dies weeks later with nothing in this chart having changed
+#   - drift the Certificate's dnsNames from the listener hostname -> a
+#     certificate is issued for a name nobody visits
+#   - drift secretName from certificateRefs -> the HTTPS listener never programs
+#   - lose the DNS label annotation -> no resolvable name, so no certificate can
+#     be issued and Entra rejects the redirect URI
+suite: platform origin Gateway and its certificate agree
+templates:
+  - templates/gateway.yaml
+tests:
+  - it: publishes the Azure DNS label, which is what makes the hostname resolvable
+    documentSelector:
+      path: kind
+      value: Gateway
+    asserts:
+      - equal:
+          path: spec.infrastructure.annotations["service.beta.kubernetes.io/azure-dns-label-name"]
+          value: xpdev-portal-dev
+      - equal:
+          path: spec.gatewayClassName
+          value: approuting-istio
+
+  - it: keeps the port-80 listener, the only ACME HTTP-01 path on this cluster
+    documentSelector:
+      path: kind
+      value: Gateway
+    asserts:
+      - equal:
+          path: spec.listeners[0].name
+          value: http
+      - equal:
+          path: spec.listeners[0].port
+          value: 80
+      - equal:
+          path: spec.listeners[0].protocol
+          value: HTTP
+
+  - it: terminates TLS on 443 against the certificate Secret
+    documentSelector:
+      path: kind
+      value: Gateway
+    asserts:
+      - equal:
+          path: spec.listeners[1].port
+          value: 443
+      - equal:
+          path: spec.listeners[1].protocol
+          value: HTTPS
+      - equal:
+          path: spec.listeners[1].tls.mode
+          value: Terminate
+      - equal:
+          path: spec.listeners[1].tls.certificateRefs[0].name
+          value: platform-origin-tls
+
+  - it: serves both listeners on the same hostname as the certificate covers
+    documentSelector:
+      path: kind
+      value: Gateway
+    asserts:
+      - equal:
+          path: spec.listeners[0].hostname
+          value: xpdev-portal-dev.westus2.cloudapp.azure.com
+      - equal:
+          path: spec.listeners[1].hostname
+          value: xpdev-portal-dev.westus2.cloudapp.azure.com
+
+  - it: admits routes from other namespaces, since each workload repo owns its own
+    documentSelector:
+      path: kind
+      value: Gateway
+    asserts:
+      - equal:
+          path: spec.listeners[0].allowedRoutes.namespaces.from
+          value: All
+      - equal:
+          path: spec.listeners[1].allowedRoutes.namespaces.from
+          value: All
+
+  - it: requests a certificate for exactly the hostname the listeners serve
+    documentSelector:
+      path: kind
+      value: Certificate
+    asserts:
+      - equal:
+          path: spec.dnsNames[0]
+          value: xpdev-portal-dev.westus2.cloudapp.azure.com
+      - equal:
+          path: spec.secretName
+          value: platform-origin-tls
+      - equal:
+          path: spec.issuerRef.kind
+          value: ClusterIssuer
+
+  - it: ships pointing at staging, because production allows only 5 duplicates a week
+    documentSelector:
+      path: kind
+      value: Certificate
+    asserts:
+      - equal:
+          path: spec.issuerRef.name
+          value: letsencrypt-staging
+
+  - it: puts the Certificate in the Gateway's own namespace, so no ReferenceGrant is needed
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: control-plane-system

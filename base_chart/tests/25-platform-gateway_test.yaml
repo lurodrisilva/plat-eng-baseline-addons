@@ -1,0 +1,63 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: platform-gateway ArgoCD Application
+templates:
+  - templates/25-platform-gateway.yaml
+tests:
+  - it: should render no documents when disabled
+    set:
+      platform_gateway.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should render the Application by default — the platform origin is GitOps-managed
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Application
+      - isAPIVersion:
+          of: argoproj.io/v1alpha1
+      - equal:
+          path: metadata.name
+          value: platform-gateway
+      - equal:
+          path: metadata.namespace
+          value: control-plane-system
+      - equal:
+          path: spec.destination.namespace
+          value: control-plane-system
+      - contains:
+          path: metadata.finalizers
+          content: resources-finalizer.argocd.argoproj.io
+  # Wave 10 puts this after cert-manager at wave 9. The Certificate this
+  # Application creates references a ClusterIssuer cert-manager owns, and the
+  # HTTP-01 solver needs cert-manager's controller running to act on it at all.
+  # Ordering these the other way leaves the Certificate retrying until ArgoCD
+  # exhausts its retry limit, after which a hard refresh will not restart it.
+  - it: must sync after cert-manager
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "10"
+  - it: should source the gateway chart from this repo
+    asserts:
+      - equal:
+          path: spec.source.path
+          value: addon_charts/platform-gateway
+  # The Gateway API CRDs are installed and version-managed by AKS, not by this
+  # chart, so client-side schema validation can lag what the cluster accepts.
+  - it: must skip client-side validation for the AKS-managed Gateway CRDs
+    asserts:
+      - contains:
+          path: spec.syncPolicy.syncOptions
+          content: Validate=false
+  # Deliberately NOT Force=true. A failed apply under Force makes ArgoCD
+  # delete-and-fail-to-recreate, which is how clusterpolicies.kyverno.io and
+  # every ClusterPolicy on it were silently dropped once already. The Gateway is
+  # the public front door; losing it to a failed sync is not an acceptable
+  # failure mode.
+  - it: must not set Force=true
+    asserts:
+      - notContains:
+          path: spec.syncPolicy.syncOptions
+          content: Force=true

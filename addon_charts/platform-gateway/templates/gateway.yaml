@@ -1,0 +1,68 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name }}
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  infrastructure:
+    annotations:
+      # The Azure DNS label that gives this load balancer a resolvable name.
+      # Without a real hostname there is no sign-in at all: Entra rejects any
+      # non-localhost `http` redirect URI, and no certificate authority will
+      # issue for a bare IP.
+      #
+      # `metadata.annotations` on the generated Service is on the add-on's
+      # customisation allow list, and `spec.infrastructure.annotations` is the
+      # documented way to reach it. Fields off that list are rejected by
+      # add-on-managed webhooks, so this is not a free-form escape hatch.
+      service.beta.kubernetes.io/azure-dns-label-name: {{ .Values.gateway.dnsLabel }}
+  listeners:
+    # Port 80 is not decoration and must not be removed: it is the only path an
+    # ACME HTTP-01 challenge can take on this cluster. DNS-01 is impossible here
+    # because the cloudapp.azure.com zone belongs to Microsoft, and there is no
+    # ingress controller for an `ingress`-based solver. Delete this listener and
+    # certificates stop renewing, which stops sign-in.
+    - name: http
+      port: 80
+      protocol: HTTP
+      hostname: {{ .Values.gateway.hostname }}
+      allowedRoutes:
+        namespaces:
+          from: {{ .Values.gateway.allowedRoutesFrom }}
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: {{ .Values.gateway.hostname }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ .Values.tls.secretName }}
+            kind: Secret
+            group: ""
+      allowedRoutes:
+        namespaces:
+          from: {{ .Values.gateway.allowedRoutesFrom }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.tls.secretName }}
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    # Wave 1: the Gateway above must exist before this Certificate requests a
+    # challenge, because the solver routes the challenge THROUGH that Gateway.
+    # The ClusterIssuer lives in the cert-manager Application, which the
+    # app-of-apps syncs at an earlier wave; if this Certificate is applied before
+    # the issuer exists, ArgoCD retries.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  secretName: {{ .Values.tls.secretName }}
+  dnsNames:
+    - {{ .Values.gateway.hostname }}
+  issuerRef:
+    name: {{ .Values.tls.issuer }}
+    kind: ClusterIssuer
+    group: cert-manager.io
