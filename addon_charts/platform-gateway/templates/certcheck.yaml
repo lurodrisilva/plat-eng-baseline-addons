@@ -1,0 +1,137 @@
+{{- if .Values.certCheck.enabled }}
+# ---------------------------------------------------------------------------
+# Platform origin certificate check (ADR-0026 named condition).
+#
+# ADR-0026 accepted Let's Encrypt contention on `azure.com` — cloudapp.azure.com
+# is absent from the Public Suffix List, so the certificates-per-registered-domain
+# budget belongs to azure.com and is shared with every Azure tenant. The record
+# made alerting a CONDITION of that acceptance, not a nice-to-have, because the
+# certificate is in the SIGN-IN path: Entra refuses a non-localhost http redirect
+# URI, so a renewal that loses the contention takes sign-in DOWN rather than
+# merely untrusted. Recovery is waiting for issuance to succeed, not acting —
+# which is exactly why it has to be noticed early rather than at expiry.
+#
+# This job only REPORTS. It emits one line per run and the Azure scheduled-query
+# rule owns every threshold, so changing "warn at 21 days" does not need a chart
+# release, and there is one place to read the policy from.
+#
+# Deliberately no shell. registry.k8s.io/kubectl is distroless — it has no
+# /bin/sh at all — so a script-based check would need a third-party image. The
+# go-template below does the whole job in kubectl's own output layer.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.certCheck.name }}
+  namespace: {{ .Values.gateway.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.certCheck.name }}
+  namespace: {{ .Values.gateway.namespace }}
+rules:
+  # Read-only, and narrowed to the one Certificate this job reports on.
+  # resourceNames is what keeps a credential that exists to read an expiry date
+  # from being able to enumerate every Certificate in the namespace.
+  #
+  # WARNING — this Role grants nothing and restricts nothing on aks-test. That
+  # cluster was created with `--disable-rbac` (`enableRBAC: false`), so the API
+  # server authorizes every request from every identity. Measured, not inferred:
+  # a SubjectAccessReview for a service account THAT DOES NOT EXIST, asking to
+  # delete nodes, returns `{"allowed":true}`. This job's own pod read
+  # `secrets/platform-origin-tls` with exit 0 while holding only the rule below.
+  #
+  # It is written correctly anyway, because it is the real constraint on any
+  # RBAC-enabled cluster this chart lands on, and because a Role that looks
+  # narrow is worse than no Role if nobody records that it is not enforced.
+  # Enabling RBAC is not an update — AKS exposes `--disable-rbac` only at
+  # create, so it costs a cluster rebuild.
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    resourceNames: ["{{ .Values.tls.secretName }}"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.certCheck.name }}
+  namespace: {{ .Values.gateway.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.certCheck.name }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.certCheck.name }}
+    namespace: {{ .Values.gateway.namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.certCheck.name }}
+  namespace: {{ .Values.gateway.namespace }}
+  annotations:
+    # After the Gateway and Certificate this chart also creates.
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  schedule: {{ .Values.certCheck.schedule | quote }}
+  concurrencyPolicy: Forbid
+  # Keep enough history to see a pattern by hand without holding Pods on a
+  # cluster that sits at ~91% CPU requested.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # A missed window must not silently vanish: with no deadline a CronJob that
+  # cannot schedule is simply skipped, and the absence rule below is what would
+  # have to catch it hours later.
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ .Values.certCheck.name }}
+        spec:
+          serviceAccountName: {{ .Values.certCheck.name }}
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: certcheck
+              image: "{{ .Values.certCheck.image.repository }}:{{ .Values.certCheck.image.tag }}"
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              # One line, one run. The distinct prefix is the whole contract with
+              # the Azure alert rule: it is what the KQL matches on, so changing
+              # it here without changing the rule turns the alert off silently.
+              # `ready` comes from the Ready condition rather than the first
+              # condition in the list, whose order is not guaranteed.
+              command:
+                - kubectl
+              args:
+                - get
+                - certificate
+                - {{ .Values.tls.secretName }}
+                - -n
+                - {{ .Values.gateway.namespace }}
+                - -o
+                - >-
+                  go-template=PLATFORM_ORIGIN_CERT_CHECK name={{ "{{" }}.metadata.name{{ "}}" }}
+                  ready={{ "{{" }}range .status.conditions{{ "}}" }}{{ "{{" }}if eq .type "Ready"{{ "}}" }}{{ "{{" }}.status{{ "}}" }}{{ "{{" }}end{{ "}}" }}{{ "{{" }}end{{ "}}" }}
+                  notAfter={{ "{{" }}.status.notAfter{{ "}}" }}{{ "{{" }}"\n"{{ "}}" }}
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 50m
+                  memory: 64Mi
+{{- end }}

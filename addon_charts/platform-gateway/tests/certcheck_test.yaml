@@ -1,0 +1,138 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# The certificate check is alerting infrastructure, so its failure mode is
+# silence: every defect pinned here renders valid YAML, applies cleanly, and
+# produces a CronJob that runs without ever alerting on anything.
+suite: platform origin certificate check
+templates:
+  - templates/certcheck.yaml
+tests:
+  - it: renders nothing when disabled, so it can be turned off without deleting it
+    set:
+      certCheck.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: creates the ServiceAccount, Role, RoleBinding and CronJob
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  # The log prefix is the contract with the Azure scheduled-query rules. Change
+  # it here without changing the KQL and both rules stop matching — Rule 1 goes
+  # quiet, and quiet is indistinguishable from healthy.
+  - it: emits the exact prefix the alert rules match on
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - matchRegex:
+          path: spec.jobTemplate.spec.template.spec.containers[0].args[6]
+          pattern: PLATFORM_ORIGIN_CERT_CHECK
+
+  # Reading .status.conditions[0] would be wrong: condition order is not
+  # guaranteed, so it would report whichever condition happened to be first and
+  # could call an unhealthy certificate ready.
+  - it: reads the Ready condition by type, not by position
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - matchRegex:
+          path: spec.jobTemplate.spec.template.spec.containers[0].args[6]
+          pattern: 'if eq \.type "Ready"'
+
+  # The expiry date is the entire point: `ready=True` alone cannot distinguish a
+  # healthy certificate from one that is about to expire un-renewed.
+  - it: reports the expiry date the 21-day rule depends on
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - matchRegex:
+          path: spec.jobTemplate.spec.template.spec.containers[0].args[6]
+          pattern: notAfter=
+
+  # registry.k8s.io/kubectl is distroless — no /bin/sh exists in it. A shell
+  # form here fails at RUNTIME with `stat /bin/sh: no such file or directory`,
+  # long after the chart renders and syncs green.
+  - it: invokes kubectl directly, never through a shell the image does not have
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command[0]
+          value: kubectl
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command
+          content: /bin/sh
+      - notContains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].command
+          content: sh
+
+  # An unpinned or `latest` tag would silently cross the kubectl ±1 minor skew
+  # window on the next cluster upgrade, and Kyverno's disallow-latest-tag policy
+  # is audit-only here so nothing would block it.
+  - it: pins the kubectl image to an explicit version
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: registry.k8s.io/kubectl:v1.34.1
+
+  - it: runs the job under its own ServiceAccount, not default
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: platform-origin-cert-check
+
+  # Narrow on any RBAC-enabled cluster. It is NOT enforced on aks-test, which
+  # runs with enableRBAC=false — that is recorded in the template and the spec,
+  # and is the reason this assertion is about correctness rather than proof.
+  - it: grants read on one Certificate and nothing else
+    documentSelector:
+      path: kind
+      value: Role
+    asserts:
+      - equal:
+          path: rules[0].verbs
+          value: ["get"]
+      - equal:
+          path: rules[0].resources
+          value: ["certificates"]
+      - equal:
+          path: rules[0].resourceNames
+          value: ["platform-origin-tls"]
+      - notContains:
+          path: rules[0].resources
+          content: secrets
+      - lengthEqual:
+          path: rules
+          count: 1
+
+  # Overlapping runs would double every log line and make a "no heartbeat in
+  # 24h" rule ambiguous about how many runs a silence represents.
+  - it: never overlaps runs
+    documentSelector:
+      path: kind
+      value: CronJob
+    asserts:
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+
+  # Every object must land in the Gateway's namespace, which is where the
+  # Certificate is. A RoleBinding in one namespace and a Certificate in another
+  # renders fine and reports nothing.
+  - it: places every object in the Gateway's own namespace
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: control-plane-system
