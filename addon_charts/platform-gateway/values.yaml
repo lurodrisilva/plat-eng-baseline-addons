@@ -59,3 +59,40 @@ tls:
   # break issuance, prove it on staging first: burning this budget costs a week
   # on a name we do not control.
   issuer: letsencrypt-prod
+
+# ---------------------------------------------------------------------------
+# Certificate readiness check — the alerting ADR-0026 made a CONDITION of
+# accepting the shared-fate certificate, not an optional extra.
+#
+# What it protects against: a renewal failing for reasons entirely outside this
+# platform (the `azure.com` budget is not ours), which takes SIGN-IN DOWN
+# because Entra refuses a non-localhost http redirect URI. Let's Encrypt renews
+# at two-thirds of lifetime, so there is roughly a 30-day window in which the
+# only useful action is noticing.
+#
+# The job reports; the Azure scheduled-query rule decides. Every threshold lives
+# in the rule, so tuning "warn at 21 days" is not a chart release. See
+# `docs/alerting.md` for the KQL and the two rules it needs — the second one,
+# alerting on the ABSENCE of these lines, is what stops a silent detector from
+# being worse than no detector.
+# ---------------------------------------------------------------------------
+certCheck:
+  enabled: true
+  name: platform-origin-cert-check
+
+  # Every 6 hours. The failure this watches for unfolds over weeks, so a tighter
+  # schedule buys nothing; 4 runs a day keeps the "no heartbeat in 24h" rule
+  # unambiguous while leaving room for one missed window.
+  schedule: "0 */6 * * *"
+
+  image:
+    # The OFFICIAL kubectl image, not a third-party rebuild — this credential can
+    # read a Certificate, so its supply chain is worth the pin.
+    #
+    # It is distroless: there is no /bin/sh, so anything shell-shaped will fail
+    # with `stat /bin/sh: no such file or directory`. The check is expressed as a
+    # kubectl go-template for that reason.
+    repository: registry.k8s.io/kubectl
+    # Pinned one minor behind nothing: the server is v1.34.x, and kubectl
+    # supports only ±1 minor. Bump this with the cluster, not independently.
+    tag: v1.34.1
