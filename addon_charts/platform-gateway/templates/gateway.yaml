@@ -32,6 +32,10 @@ spec:
       allowedRoutes:
         namespaces:
           from: {{ .Values.gateway.allowedRoutesFrom }}
+          {{- if eq .Values.gateway.allowedRoutesFrom "Selector" }}
+          selector:
+            {{- toYaml .Values.gateway.allowedRoutesSelector | nindent 12 }}
+          {{- end }}
     - name: https
       port: 443
       protocol: HTTPS
@@ -45,6 +49,10 @@ spec:
       allowedRoutes:
         namespaces:
           from: {{ .Values.gateway.allowedRoutesFrom }}
+          {{- if eq .Values.gateway.allowedRoutesFrom "Selector" }}
+          selector:
+            {{- toYaml .Values.gateway.allowedRoutesSelector | nindent 12 }}
+          {{- end }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

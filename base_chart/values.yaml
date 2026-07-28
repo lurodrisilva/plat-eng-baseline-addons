@@ -111,6 +111,25 @@ platform_gateway:
   enabled: true
   namespace: control-plane-system
 
+# The developer portal — the human entrance to the paved road, served on the
+# public origin the platform_gateway above terminates (ADR-0024).
+#
+# Unlike every other entry here, its chart is NOT in addon_charts/: it lives in
+# the portal's own repository beside the code, so one review covers the app and
+# how it is deployed. The repository is public, so ArgoCD clones it anonymously.
+#
+# targetRevision HEAD with manifest-generate-paths means a portal commit that
+# does not touch deploy/chart does not resync this Application — and because the
+# chart pins the image by DIGEST, publishing a new image does not deploy it
+# either. Shipping is the commit that changes the digest, which is deliberate.
+developer_portal:
+  addon_name: developer-portal
+  enabled: true
+  namespace: platform-portal
+  repo: https://github.com/lurodrisilva/plat-eng-developer-portal.git
+  targetRevision: HEAD
+  path: deploy/chart
+
 opentelemetry_operator: # Disabled to save resources.
   addon_name: opentelemetry-operator
   enabled: false

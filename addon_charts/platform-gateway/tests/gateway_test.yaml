@@ -72,17 +72,45 @@ tests:
           path: spec.listeners[1].hostname
           value: xpdev-portal-dev.westus2.cloudapp.azure.com
 
-  - it: admits routes from other namespaces, since each workload repo owns its own
+  # Each workload repository owns its own route, but not the right to publish
+  # here. `from: All` let any namespace on the cluster claim a path on an
+  # internet-facing hostname, and path precedence is not an authorisation check:
+  # Gateway API resolves a MORE SPECIFIC path in favour of the newer route
+  # regardless of age, so `/api/v1/deployments` beats the governance API's own
+  # `/api/v1` from anywhere.
+  - it: admits routes only from namespaces the platform has labelled
     documentSelector:
       path: kind
       value: Gateway
     asserts:
       - equal:
           path: spec.listeners[0].allowedRoutes.namespaces.from
-          value: All
+          value: Selector
       - equal:
           path: spec.listeners[1].allowedRoutes.namespaces.from
-          value: All
+          value: Selector
+      # BOTH listeners, not just HTTPS. Port 80 carries the ACME HTTP-01
+      # challenge, whose route cert-manager creates in the Certificate's
+      # namespace — control-plane-system, which is labelled for exactly this
+      # reason. A selector on 443 alone would leave 80 open to every namespace.
+      - equal:
+          path: spec.listeners[0].allowedRoutes.namespaces.selector.matchLabels["platform-origin/publish"]
+          value: "true"
+      - equal:
+          path: spec.listeners[1].allowedRoutes.namespaces.selector.matchLabels["platform-origin/publish"]
+          value: "true"
+
+  - it: emits no selector when admission is left open, so the field cannot be half-set
+    documentSelector:
+      path: kind
+      value: Gateway
+    set:
+      gateway.allowedRoutesFrom: All
+    asserts:
+      - notExists:
+          path: spec.listeners[0].allowedRoutes.namespaces.selector
+      - notExists:
+          path: spec.listeners[1].allowedRoutes.namespaces.selector
 
   - it: requests a certificate for exactly the hostname the listeners serve
     documentSelector:

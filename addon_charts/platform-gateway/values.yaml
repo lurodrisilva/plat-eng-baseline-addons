@@ -29,13 +29,37 @@ gateway:
   dnsLabel: xpdev-portal-dev
   hostname: xpdev-portal-dev.westus2.cloudapp.azure.com
 
-  # `from: All` on both listeners. Routes are owned by the workload repositories
-  # in their own namespaces (platform-portal, platform-orchestrator) and more
-  # will attach over time, so a namespace selector here would become a second
-  # place to remember to edit. Conflicts are resolved by hostname and path
-  # precedence, and the HTTP listener additionally has to accept the ACME
-  # challenge route cert-manager creates.
-  allowedRoutesFrom: All
+  # ROUTE ADMISSION ON AN INTERNET-FACING ORIGIN.
+  #
+  # This was `from: All`, on the reasoning that routes are owned by the workload
+  # repositories in their own namespaces and a selector would become a second
+  # place to remember to edit. That cost is real. It is smaller than what it
+  # bought: every namespace on the cluster could attach a route claiming a path
+  # on this hostname, tenant application namespaces included.
+  #
+  # "Conflicts are resolved by hostname and path precedence" was the other half
+  # of the argument, and precedence is exactly the problem — Gateway API
+  # resolves a MORE SPECIFIC path in favour of the newer route regardless of
+  # age. A route matching `/api/v1/deployments` beats the governance API's own
+  # `/api/v1`, from any namespace, at any time. Path precedence is a
+  # deterministic rule, not an authorisation check.
+  #
+  # A namespace carrying this label may publish here. Today:
+  #
+  #   control-plane-system    the ACME HTTP-01 solver route cert-manager creates
+  #                           in the Certificate's namespace — LOAD-BEARING for
+  #                           renewal, not optional (aks-foundation labels it)
+  #   platform-portal         the portal's `/` route (P5; the ArgoCD Application
+  #                           labels the namespace as it creates it)
+  #   platform-orchestrator   the `/api/v1` route (P6)
+  #
+  # A route in an unlabelled namespace is not rejected loudly: it reports
+  # `NotAllowedByListeners` in its own status while ArgoCD still shows Synced,
+  # so the symptom is a 404 on the origin rather than a failed sync.
+  allowedRoutesFrom: Selector
+  allowedRoutesSelector:
+    matchLabels:
+      platform-origin/publish: "true"
 
 tls:
   # The Secret the Gateway's HTTPS listener terminates with, created by the
