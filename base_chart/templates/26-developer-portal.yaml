@@ -1,0 +1,66 @@
+---
+{{- if (.Values.developer_portal.enabled) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.developer_portal.addon_name }}
+  namespace: {{ .Values.global.control_plane.namespace }}
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: .
+    # Wave 11 — after platform-gateway (wave 10). The HTTPRoute this chart
+    # creates attaches to the Gateway that Application owns; a route whose
+    # parent does not exist yet reports NotAcceptedByParent and stays that way
+    # until the next sync.
+    argocd.argoproj.io/sync-wave: "11"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: {{ .Values.global.control_plane.project }}
+  source:
+    # THE ONLY APPLICATION HERE THAT SOURCES A FOREIGN REPOSITORY. The portal's
+    # chart lives beside the portal's code so one review covers both, which is
+    # not true of anything in addon_charts/. The repository is public, so ArgoCD
+    # clones it with no credential and no repo Secret is needed.
+    repoURL: {{ .Values.developer_portal.repo }}
+    targetRevision: {{ .Values.developer_portal.targetRevision }}
+    path: {{ .Values.developer_portal.path }}
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.developer_portal.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # The namespace is created here AND CARRIES THE LABEL THAT LETS ITS ROUTE
+    # ATTACH. The platform-origin Gateway admits routes only from namespaces
+    # labelled platform-origin/publish=true; without it the HTTPRoute reports
+    # NotAllowedByListeners in its own status while this Application still shows
+    # Synced and Healthy, so the symptom would be a 404 on the public origin
+    # rather than a failed sync. Each namespace is labelled by whoever creates
+    # it — aks-foundation labels control-plane-system, this labels its own.
+    managedNamespaceMetadata:
+      labels:
+        platform-origin/publish: "true"
+        app.kubernetes.io/part-of: platform
+    syncOptions:
+      - CreateNamespace=true
+      # Same reason as the Gateway Application: the Gateway API CRDs are
+      # installed and version-managed by AKS, not by any chart here, so
+      # client-side schema validation can lag what the cluster accepts.
+      - Validate=false
+      - Prune=true
+      - ApplyOutOfSyncOnly=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    {{- with .Values.global.control_plane.deployment }}
+    retry:
+      limit: {{ .limit }}
+      backoff:
+        duration: {{ .backoff.duration }}
+        factor: {{ .backoff.factor }}
+        maxDuration: {{ .backoff.maxDuration }}
+    {{- end }}
+{{- end }}
